@@ -5,6 +5,8 @@ limit coredumpsize 0
 export PATH="$HOME/.local/bin:$PATH"
 eval "$(sheldon source)"
 
+export PATH="$HOME/.pixi/bin:$PATH"
+
 alias v='bob run stable'
 alias cz='$HOME/bin/chezmoi'
 alias czall='$HOME/scripts/czall $HOME/scripts/czlist.txt'

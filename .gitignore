@@ -16,3 +16,14 @@
 # wezterm
 !wezterm/
 !wezterm/wezterm.lua
+
+# nvim
+!nvim/
+!nvim/init.lua
+!nvim/lsp/
+!nvim/lsp/*
+!nvim/lua/
+!nvim/lua/*
+!nvim/lua/config/
+!nvim/lua/config/*
+
