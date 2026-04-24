@@ -27,3 +27,5 @@
 !nvim/lua/config/
 !nvim/lua/config/*
 
+# README
+!README.md
