@@ -1,0 +1,18 @@
+# all files
+*
+
+# .gitignore
+!.gitignore
+
+# zsh
+!zsh/
+!zsh/.zshenv
+!zsh/.zshrc
+
+# sheldon
+!sheldon/
+!sheldon/plugins.toml
+
+# wezterm
+!wezterm/
+!wezterm/wezterm.lua
