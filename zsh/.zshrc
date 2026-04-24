@@ -8,12 +8,11 @@ eval "$(sheldon source)"
 export PATH="$HOME/.pixi/bin:$PATH"
 
 alias v='bob run stable'
-alias cz='$HOME/bin/chezmoi'
-alias czall='$HOME/scripts/czall $HOME/scripts/czlist.txt'
 
-alias ll='ls -l'
-alias la='ls -A'
-alias lla='ls -l -A'
+alias ls='eza'
+alias ll='eza -l'
+alias la='eza -A'
+alias lla='eza -l -A'
 alias g='git'
 alias gst='git status'
 alias gsw='git switch'

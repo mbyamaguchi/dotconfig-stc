@@ -31,6 +31,12 @@ exec $SHELL
 
 ### Additional Installation
 
-Fully to use the settings, install `bat` and `eza` through the command like `sudo apt install bat eza`.
+Fully to use the settings, install below all.
 
+- bat
+- eza
+- sheldon
+- neovim>=0.12
+- starship
+- Source Han Code JP
 
