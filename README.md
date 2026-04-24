@@ -4,7 +4,7 @@
 
 ### Installation
 
-Add below to the `/etc/zsh/zshenv`, as well as installing zsh (`sudo apt install zsh` or something).
+Add below to the `/etc/zsh/zshenv`, as well as installing zsh (run `sudo apt install zsh` or something).
 
 ```zshenv
 ZDOTDIR=$HOME/.config/zsh
@@ -13,6 +13,7 @@ ZDOTDIR=$HOME/.config/zsh
 Then run `cd $HOME/.config` on your shell to move to the working dir.
 
 After the setup of ssh for github, run some commands below.
+
 Do not forget to save backups just in case.
 
 ```sh
@@ -27,3 +28,9 @@ Finally, run:
 ```sh
 exec $SHELL
 ```
+
+### Additional Installation
+
+Fully to use the settings, install `bat` and `eza` through the command like `sudo apt install bat eza`.
+
+
