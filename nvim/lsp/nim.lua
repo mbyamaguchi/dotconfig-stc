@@ -1,4 +1,4 @@
-vim.lsp.config.nimlsp = {
+return {
     cmd = { "nimlsp" },
 
     root_markers = { ".git", "*.nimble", "nim.cfg" },
@@ -15,5 +15,3 @@ vim.lsp.config.nimlsp = {
 
     settings = {},
 }
-
-vim.lsp.enable("nimlsp")

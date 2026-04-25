@@ -6,6 +6,7 @@ export PATH="$HOME/.local/bin:$PATH"
 eval "$(sheldon source)"
 
 export PATH="$HOME/.pixi/bin:$PATH"
+export PATH="$HOME/.nimble/bin:$PATH"
 
 alias v='bob run stable'
 

@@ -39,4 +39,5 @@ Fully to use the settings, install below all.
 - neovim>=0.12
 - starship
 - Source Han Code JP
+- dropbox : `dropbox.com/ja/install-linux`
 
