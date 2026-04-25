@@ -18,6 +18,8 @@ vim.pack.add({
 	'https://github.com/rcarriga/nvim-dap-ui',
 
     'https://github.com/catppuccin/nvim',
+    'https://github.com/alaviss/nim.nvim',
+
 })
 vim.pack.add({
 	{ src = 'https://github.com/folke/tokyonight.nvim' },
