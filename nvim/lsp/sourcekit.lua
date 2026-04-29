@@ -1,5 +1,5 @@
 return {
-    cmd = { "$HOME/.local/share/swiftgly/bin/sourcekit-lsp" },
+    cmd = { "$HOME/.local/share/swiftly/bin/sourcekit-lsp" },
     filetypes = { "swift", "objective-c", "objective-cpp" },
     root_dir = function(filename)
         local util = require("lspconfig.util")
