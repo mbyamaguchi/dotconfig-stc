@@ -1,10 +1,10 @@
-# DotConfig feat. Santa Claus
+# DotConfig feat. STC
 
 ## Usage
 
 ### Installation
 
-Add below to the `/etc/zsh/zshenv`, as well as installing zsh (run `sudo apt install zsh` or something).
+Add below to the bottom of `/etc/zsh/zshenv`, after installing zsh (run `sudo apt install zsh` or something else) and change your default shell to the zsh (consider run `chsh -s /bin/zsh`).
 
 ```zshenv
 ZDOTDIR=$HOME/.config/zsh
@@ -14,7 +14,7 @@ Then run `cd $HOME/.config` on your shell to move to the working dir.
 
 After the setup of ssh for github, run some commands below.
 
-Do not forget to save backups just in case.
+Do not forget to save backups like what you want.
 
 ```sh
 git init
@@ -39,5 +39,6 @@ Fully to use the settings, install below all.
 - neovim>=0.12
 - starship
 - Source Han Code JP
-- dropbox : `dropbox.com/ja/install-linux`
-
+- dropbox : see the website `dropbox.com/ja/install-linux`
+- pixi (package manager for python)
+- uv 
