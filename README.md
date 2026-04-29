@@ -4,15 +4,16 @@
 
 ### Installation
 
-Add below to the bottom of `/etc/zsh/zshenv`, after installing zsh (run `sudo apt install zsh` or something else) and change your default shell to the zsh (consider run `chsh -s /bin/zsh`).
+Firstly, install zsh (run `sudo apt install zsh` or something else) and change your default shell to the zsh (consider to run `chsh -s /bin/zsh`).
 
+Next add below to the bottom of `/etc/zsh/zshenv`
 ```zshenv
 ZDOTDIR=$HOME/.config/zsh
 ```
 
 Then run `cd $HOME/.config` on your shell to move to the working dir.
 
-After the setup of ssh for github, run some commands below.
+After setting up ssh for your github account, run some commands below.
 
 Do not forget to save backups like what you want.
 
@@ -28,6 +29,8 @@ Finally, run:
 ```sh
 exec $SHELL
 ```
+
+to apply the changes.
 
 ### Additional Installation
 
