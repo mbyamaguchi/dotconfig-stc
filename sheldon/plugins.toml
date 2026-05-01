@@ -18,30 +18,29 @@
 
 shell = "zsh"
 
-[plugins.defer]
-github = 'romkatv/zsh-defer'
+[plugins.zsh-defer]
+github = "romkatv/zsh-defer"
+
+[templates]
+defer = "{% for file in files %}zsh-defer source \"{{ file }}\"\n{% endfor %}"
 
 [plugins.zsh-completions]
 github = 'zsh-users/zsh-completions'
+apply = ["defer"]
 
-[plugins.zsh-syntax-highlighting]
-github = 'zsh-users/zsh-syntax-highlighting'
-
-
+[plugins.zsh-autosuggestions]
+github = 'zsh-users/zsh-autosuggestions'
+apply = ["defer"]
 
 [plugins.starship]
 inline = 'eval "$(starship init zsh)"'
 
-[plugins.zsh-defer]
-github = "romkatv/zsh-defer"
-
-[plugins.zsh-autosuggestions]
-github = "zsh-users/zsh-autosuggestions"
-
 [plugins.zsh-bat]
 github = 'fdellwing/zsh-bat'
+apply = ["defer"]
 
 [plugins.fast-syntax-highlighting]
 github = "zdharma/fast-syntax-highlighting"
+apply = ["defer"]
 
 
