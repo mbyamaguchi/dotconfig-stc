@@ -20,8 +20,8 @@ Do not forget to save backups like what you want.
 ```sh
 git init
 git remote add origin git@github.com:mbyamaguchi/dotconfig-stc.git
-git fetch
 git checkout main
+git fetch
 ```
 
 Finally, run:
