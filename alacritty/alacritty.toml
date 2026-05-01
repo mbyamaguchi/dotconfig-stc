@@ -1,0 +1,15 @@
+[general]
+import = [
+    "$HOME/.config/alacritty/themes/monokai_pro.toml"
+]
+
+[terminal.shell]
+program = "/bin/zsh"
+args = ["-1"]
+
+[font]
+normal = { family = "Firple", style = "Regular" }
+bold = { family = "Firple", style = "Bold" }
+italic = { family = "Firple", style = "Italic" }
+bold_italic = { family = "Firple", style = "BoldItalic" }
+size = 11.0
