@@ -1,4 +1,9 @@
 -- init.lua
+
+-- LuaJIT optimization
+vim.loader.enable()
+
+-- require
 require("plugins")
 
 require("config.options")
