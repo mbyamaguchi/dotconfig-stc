@@ -22,7 +22,13 @@ limit coredumpsize 0
 source "$HOME/.cargo/env"
 
 export PATH="$HOME/.local/bin:$PATH"
-eval "$(sheldon source)"
+
+# sheldon up
+if [[ ! $HOME/.zsh_plugins.zsh -nt $HOME/.config/sheldon/plugins.toml ]]; then
+    sheldon source > $HOME/.zsh_plugins.zsh
+fi
+source $HOME/.zsh_plugins.zsh
+
 
 autoload -Uz compinit
 
