@@ -7,6 +7,9 @@ import = [
 program = "/bin/zsh"
 args = ["-1"]
 
+[window]
+dynamic_padding = false
+
 [font]
 normal = { family = "Firple", style = "Regular" }
 bold = { family = "Firple", style = "Bold" }
