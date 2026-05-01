@@ -32,8 +32,6 @@ apply = ["defer"]
 github = 'zsh-users/zsh-autosuggestions'
 apply = ["defer"]
 
-[plugins.starship]
-inline = 'eval "$(starship init zsh)"'
 
 [plugins.zsh-bat]
 github = 'fdellwing/zsh-bat'
@@ -44,3 +42,5 @@ github = "zdharma/fast-syntax-highlighting"
 apply = ["defer"]
 
 
+[plugins.starship]
+inline = 'eval "$(starship init zsh)"'

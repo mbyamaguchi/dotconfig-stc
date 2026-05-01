@@ -52,3 +52,7 @@ alias gada='git add .'
 alias gcm='git commit'
 alias gmg='git merge'
 alias gpsh='git push'
+
+
+# locale
+export LANG=ja_JP.UTF-8
