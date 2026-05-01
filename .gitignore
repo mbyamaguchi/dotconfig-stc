@@ -13,6 +13,10 @@
 !sheldon/
 !sheldon/plugins.toml
 
+# alacritty
+!alacritty/
+!alacritty/alacritty.toml
+
 # wezterm
 !wezterm/
 !wezterm/wezterm.lua
@@ -29,3 +33,4 @@
 
 # README
 !README.md
+
