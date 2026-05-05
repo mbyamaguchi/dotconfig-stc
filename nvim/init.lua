@@ -8,7 +8,7 @@ require("plugins")
 
 require("config.options")
 
-require("config/keymaps")
+require("config.keymaps")
 
 require("config.lsp")
 

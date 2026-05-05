@@ -46,3 +46,6 @@ Fully to use the settings, install below all.
 - pixi (package manager for python)
 - uv 
 - alacritty
+- node/npm
+- pnpm
+
