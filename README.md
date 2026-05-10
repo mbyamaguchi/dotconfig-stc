@@ -41,11 +41,10 @@ Fully to use the settings, install below all.
 - sheldon
 - neovim>=0.12
 - starship
-- Source Han Code JP
-- Firple
 - pixi (package manager for python)
 - uv 
 - alacritty
 - node/npm
 - pnpm
+- Cica font
 
