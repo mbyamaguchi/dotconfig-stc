@@ -84,3 +84,6 @@ export NVM_DIR="$HOME/.config/nvm"
 export PATH=$HOME/.nimble/bin:$PATH
 
 export PATH=$HOME/.local/share/zig:$PATH
+
+# golang
+export PATH="$PATH:$(go env GOPATH)/bin"
