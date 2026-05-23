@@ -59,6 +59,9 @@ alias gcm='git commit'
 alias gmg='git merge'
 alias gpsh='git push'
 
+# cargo
+alias cgo='cargo'
+
 
 # locale
 export LANG=ja_JP.UTF-8
