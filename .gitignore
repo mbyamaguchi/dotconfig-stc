@@ -24,12 +24,12 @@
 # nvim
 !nvim/
 !nvim/init.lua
-!nvim/lsp/
-!nvim/lsp/*
 !nvim/lua/
 !nvim/lua/*
 !nvim/lua/config/
 !nvim/lua/config/*
+!nvim/lua/config/plugins/
+!nvim/lua/config/plugins/*
 
 # tmux
 !tmux/
