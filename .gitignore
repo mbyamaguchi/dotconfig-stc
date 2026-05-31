@@ -4,6 +4,10 @@
 # .gitignore
 !.gitignore
 
+# bootstrap
+!bootstrap/
+!bootstrap/*
+
 # zsh
 !zsh/
 !zsh/.zshenv
