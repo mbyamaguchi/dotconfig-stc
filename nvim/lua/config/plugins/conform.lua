@@ -31,6 +31,10 @@ return {
         markdown        = { "prettier" },
         yaml            = { "prettier" },
         lua             = { "stylua" },
+        c               = { "clang_format" },
+        cpp             = { "clang_format" },
+        rust            = { "rustfmt" },
+        python          = { "ruff_format" },
       },
 
       -- 保存時に自動フォーマット

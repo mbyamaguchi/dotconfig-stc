@@ -36,6 +36,9 @@ return {
         "cssls",       -- CSS
         "html",        -- HTML
         "emmet_ls",    -- Emmet 補完
+        "clangd",      -- C / C++
+        "rust_analyzer", -- Rust
+        "pyright",     -- Python
       },
       automatic_installation = false,
     },
@@ -234,6 +237,74 @@ return {
         },
       })
       vim.lsp.enable("lua_ls")
+
+      -- C / C++
+      vim.lsp.config("clangd", {
+        on_attach    = on_attach,
+        capabilities = capabilities,
+        cmd = {
+          "clangd",
+          "--background-index",
+          "--clang-tidy",
+          "--header-insertion=iwyu",
+          "--completion-style=detailed",
+          "--function-arg-placeholders",
+        },
+        init_options = {
+          usePlaceholders = true,
+          completeUnimported = true,
+          clangdFileStatus = true,
+        },
+      })
+      vim.lsp.enable("clangd")
+
+      -- Rust
+      vim.lsp.config("rust_analyzer", {
+        on_attach    = on_attach,
+        capabilities = capabilities,
+        settings = {
+          ["rust-analyzer"] = {
+            cargo = {
+              allFeatures = true,
+              loadOutDirsFromCheck = true,
+            },
+            checkOnSave = {
+              command = "clippy",
+            },
+            inlayHints = {
+              bindingModeHints      = { enable = true },
+              chainingHints         = { enable = true },
+              closingBraceHints     = { enable = true, minLines = 25 },
+              closureReturnTypeHints = { enable = "always" },
+              lifetimeElisionHints  = { enable = "always", useParameterNames = true },
+              maxLength             = 25,
+              parameterHints        = { enable = true },
+              reborrowHints         = { enable = "always" },
+              renderColons          = true,
+              typeHints             = { enable = true, hideClosureInitialization = false, hideNamedConstructor = false },
+            },
+            procMacro = { enable = true },
+          },
+        },
+      })
+      vim.lsp.enable("rust_analyzer")
+
+      -- Python
+      vim.lsp.config("pyright", {
+        on_attach    = on_attach,
+        capabilities = capabilities,
+        settings = {
+          python = {
+            analysis = {
+              autoSearchPaths        = true,
+              diagnosticMode         = "workspace",
+              useLibraryCodeForTypes = true,
+              typeCheckingMode       = "basic",
+            },
+          },
+        },
+      })
+      vim.lsp.enable("pyright")
     end,
   },
 
