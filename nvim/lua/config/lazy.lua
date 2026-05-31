@@ -135,43 +135,39 @@ require("lazy").setup({
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
-    event = "BufReadPost",
-    dependencies = {
-      "nvim-treesitter/nvim-treesitter-textobjects",
-    },
+    lazy = false, -- new rewrite does not support lazy-loading
     config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = {
-          "typescript", "tsx", "javascript",
-          "json", "jsonc", "yaml", "toml",
-          "html", "css", "graphql",
-          "lua", "vim", "vimdoc",
-          "markdown", "markdown_inline",
-          "c", "cpp",
-          "rust",
-          "python",
-        },
-        highlight = { enable = true },
-        indent = { enable = true },
-        textobjects = {
-          select = {
-            enable = true,
-            lookahead = true,
-            keymaps = {
-              ["af"] = "@function.outer",
-              ["if"] = "@function.inner",
-              ["ac"] = "@class.outer",
-              ["ic"] = "@class.inner",
-            },
-          },
-          move = {
-            enable = true,
-            set_jumps = true,
-            goto_next_start = { ["]f"] = "@function.outer", ["]c"] = "@class.outer" },
-            goto_previous_start = { ["[f"] = "@function.outer", ["[c"] = "@class.outer" },
-          },
-        },
+      require("nvim-treesitter").setup()
+      require("nvim-treesitter").install({
+        "typescript", "tsx", "javascript",
+        "json", "jsonc", "yaml", "toml",
+        "html", "css", "graphql",
+        "lua", "vim", "vimdoc",
+        "markdown", "markdown_inline",
+        "c", "cpp",
+        "rust",
+        "python",
       })
+    end,
+  },
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    lazy = false,
+    config = function()
+      require("nvim-treesitter-textobjects").setup({
+        select = { lookahead = true },
+        move = { set_jumps = true },
+      })
+      local sel = require("nvim-treesitter-textobjects.select")
+      vim.keymap.set({ "x", "o" }, "af", function() sel.select_textobject("@function.outer", "textobjects") end)
+      vim.keymap.set({ "x", "o" }, "if", function() sel.select_textobject("@function.inner", "textobjects") end)
+      vim.keymap.set({ "x", "o" }, "ac", function() sel.select_textobject("@class.outer", "textobjects") end)
+      vim.keymap.set({ "x", "o" }, "ic", function() sel.select_textobject("@class.inner", "textobjects") end)
+      local mov = require("nvim-treesitter-textobjects.move")
+      vim.keymap.set("n", "]f", function() mov.goto_next_start("@function.outer", "textobjects") end)
+      vim.keymap.set("n", "]c", function() mov.goto_next_start("@class.outer", "textobjects") end)
+      vim.keymap.set("n", "[f", function() mov.goto_previous_start("@function.outer", "textobjects") end)
+      vim.keymap.set("n", "[c", function() mov.goto_previous_start("@class.outer", "textobjects") end)
     end,
   },
 
