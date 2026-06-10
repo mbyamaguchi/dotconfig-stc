@@ -140,7 +140,7 @@ require("lazy").setup({
       require("nvim-treesitter").setup()
       require("nvim-treesitter").install({
         "typescript", "tsx", "javascript",
-        "json", "jsonc", "yaml", "toml",
+        "json", "yaml", "toml",
         "html", "css", "graphql",
         "lua", "vim", "vimdoc",
         "markdown", "markdown_inline",
