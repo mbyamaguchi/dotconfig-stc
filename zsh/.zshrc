@@ -1,43 +1,54 @@
-autoload -Uz compinit
-
-ZCOMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump"
-
-if [[ -n "$ZCOMPDUMP(#qN.mh+24)" ]];then
-    compinit -d "$ZCOMPDUMP"
-else
-    compinit -C -d "$ZCOMPDUMP"
-fi
-
-{
-    if [[ ! "$ZCOMPDUMP.zwc" -nt "$ZCOMPDUMP" ]];then
-        zcompile "$ZCOMPDUMP"
-    fi
-} &!
-
 umask 022
-
 limit coredumpsize 0
 
-# rustup
-source "$HOME/.cargo/env"
-
+# ---------------------------------------------------------------------------
+# PATH
+# ---------------------------------------------------------------------------
 export PATH="$HOME/.local/bin:$PATH"
-
-# sheldon up
-if [[ ! $HOME/.zsh_plugins.zsh -nt $HOME/.config/sheldon/plugins.toml ]]; then
-    sheldon source > $HOME/.zsh_plugins.zsh
-fi
-source $HOME/.zsh_plugins.zsh
-
-
-autoload -Uz compinit
-
 export PATH="$HOME/.pixi/bin:$PATH"
 export PATH="$HOME/.nimble/bin:$PATH"
+export PATH="$HOME/.local/share/zig:$PATH"
+export PATH="$PATH:$(go env GOPATH)/bin"
 
+# pnpm
+export PNPM_HOME="$HOME/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Completion
+# ---------------------------------------------------------------------------
+autoload -Uz compinit && compinit
+
+# ---------------------------------------------------------------------------
+# Plugins (sheldon)
+# ---------------------------------------------------------------------------
+eval "$(sheldon source)"
+
+# ---------------------------------------------------------------------------
+# Locale
+# ---------------------------------------------------------------------------
+export LANG=ja_JP.UTF-8
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+# nvm
+export NVM_DIR="$HOME/.config/nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"                   # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
+
+# fzf
+source <(fzf --zsh)
+
+# ---------------------------------------------------------------------------
+# Aliases
+# ---------------------------------------------------------------------------
 alias v='bob run stable'
 
-# ls
+# ls (eza)
 alias ls='eza'
 alias ll='eza -l'
 alias la='eza -A'
@@ -46,7 +57,7 @@ alias lla='eza -l -A'
 # zoxide
 alias z='zoxide'
 
-
+# git
 alias g='git'
 alias gst='git status'
 alias gsw='git switch'
@@ -62,39 +73,10 @@ alias gpsh='git push'
 # cargo
 alias cgo='cargo'
 
-
-# locale
-export LANG=ja_JP.UTF-8
-
-# term
-export TERM=alacritty
-
-
-# pnpm
-export PNPM_HOME="/home/mbyamaguchi/.local/share/pnpm"
-case ":$PATH:" in
-  *":$PNPM_HOME:"*) ;;
-  *) export PATH="$PNPM_HOME:$PATH" ;;
-esac
-# pnpm end
-
-# nvm
-export NVM_DIR="$HOME/.config/nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-
-export PATH=$HOME/.nimble/bin:$PATH
-
-export PATH=$HOME/.local/share/zig:$PATH
-
-# golang
-export PATH="$PATH:$(go env GOPATH)/bin"
-
-# fzf
-source <(fzf --zsh)
-
-# yazi settings
+# ---------------------------------------------------------------------------
+# Functions
+# ---------------------------------------------------------------------------
+# yazi: cd into the directory yazi exits in
 function y() {
     local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
     yazi "$@" --cwd-file="$tmp"
@@ -103,4 +85,3 @@ function y() {
     fi
     rm -f -- "$tmp"
 }
-
