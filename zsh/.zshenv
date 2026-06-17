@@ -44,6 +44,5 @@ setopt list_packed
 setopt no_beep
 unsetopt list_types
 export _ANTIGEN_INSTALL_DIR=${HOME}/.local/bin
-. "/home/mbyamaguchi/.local/share/bob/env/env.sh"
-. "/home/mbyamaguchi/.local/share/bob/env/env.sh"
 . "$HOME/.cargo/env"
+. "/home/user/.local/share/bob/env/env.sh"
