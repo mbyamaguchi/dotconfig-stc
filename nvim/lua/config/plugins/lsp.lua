@@ -45,6 +45,14 @@ return {
     config = function(_, opts)
       require("mason-lspconfig").setup(opts)
 
+      -- nvim-lspconfig は lazy = true で読み込みトリガーが無いため、
+      -- ここで明示的に require して読み込む。これにより lsp/<name>.lua の
+      -- デフォルト設定（filetypes・root_markers 等）が vim.lsp.config に
+      -- マージされるようになる。これを行わないと filetypes が未設定のまま
+      -- となり、各 LSP サーバーが全てのファイルタイプにアタッチしてしまう
+      -- （clangd が .gitignore 等を開くたびに invalid AST エラーを出す原因だった）。
+      require("lspconfig")
+
       -- -----------------------------------------------------------------------
       -- on_attach: LSP がバッファにアタッチされたときのキーマップ・設定
       -- -----------------------------------------------------------------------
@@ -315,7 +323,11 @@ return {
   -- Diagnostic 表示設定
   -- -----------------------------------------------------------------------
   {
-    "neovim/nvim-lspconfig",  -- 0.12 では不要だが、一部プラグインが依存するため残す
+    -- 0.12 のネイティブ LSP では vim.lsp.start() 等で直接起動できるため lspconfig
+    -- 自体は必須ではないが、各サーバーの lsp/<name>.lua（filetypes・root_markers の
+    -- デフォルト）を利用するために読み込んでいる。実際の読み込みは上の
+    -- mason-lspconfig 設定内の require("lspconfig") がトリガーになる。
+    "neovim/nvim-lspconfig",
     lazy = true,
     config = function()
       -- Diagnostic アイコン
