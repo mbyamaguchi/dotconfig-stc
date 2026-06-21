@@ -313,6 +313,20 @@ return {
         },
       })
       vim.lsp.enable("pyright")
+
+      -- Python（Ruff: Lint / Code Action 専用。Hover は pyright に任せる）
+      -- uv run 経由で起動することで、プロジェクトの pyproject.toml / uv.lock に
+      -- 固定された ruff のバージョンを使用する（グローバルインストール不要）。
+      vim.lsp.config("ruff", {
+        cmd = { "uv", "run", "ruff", "server" },
+        on_attach = function(client, bufnr)
+          on_attach(client, bufnr)
+          -- pyright の hover と重複しないように無効化
+          client.server_capabilities.hoverProvider = false
+        end,
+        capabilities = capabilities,
+      })
+      vim.lsp.enable("ruff")
     end,
   },
 
