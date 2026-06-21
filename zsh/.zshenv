@@ -45,4 +45,8 @@ setopt no_beep
 unsetopt list_types
 export _ANTIGEN_INSTALL_DIR=${HOME}/.local/bin
 . "$HOME/.cargo/env"
-. "/home/user/.local/share/bob/env/env.sh"
+. "$HOME/.local/share/bob/env/env.sh"
+
+# dotnet
+export DOTNET_ROOT=$HOME/.dotnet
+export PATH=$PATH:$HOME/.dotnet
