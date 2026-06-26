@@ -46,3 +46,8 @@
 # yt-dlp
 !yt-dlp/
 !yt-dlp/*
+
+# git
+!git/
+!git/config
+!git/ignore
