@@ -1,5 +1,5 @@
 # editor
-alias v='bob run stable'
+alias v='nvim'
 
 # ls
 alias ls='eza'
