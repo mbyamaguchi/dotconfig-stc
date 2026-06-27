@@ -12,6 +12,7 @@
 !zsh/
 !zsh/.zshenv
 !zsh/.zshrc
+!zsh/aliases.zsh
 
 # sheldon
 !sheldon/
