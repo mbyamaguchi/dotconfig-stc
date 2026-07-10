@@ -1,5 +1,7 @@
 # DotConfig feat. STC
 
+- Author: `mbyamaguchi`
+
 ## Usage
 
 ### Installation
