@@ -9,18 +9,18 @@ return {
     event = "InsertEnter",
     dependencies = {
       -- ソース
-      "hrsh7th/cmp-nvim-lsp",       -- LSP
-      "hrsh7th/cmp-buffer",          -- バッファ内テキスト
-      "hrsh7th/cmp-path",            -- ファイルパス
-      "hrsh7th/cmp-cmdline",         -- コマンドライン
+      "hrsh7th/cmp-nvim-lsp", -- LSP
+      "hrsh7th/cmp-buffer", -- バッファ内テキスト
+      "hrsh7th/cmp-path", -- ファイルパス
+      "hrsh7th/cmp-cmdline", -- コマンドライン
       "hrsh7th/cmp-nvim-lsp-signature-help", -- シグネチャヘルプ
 
       -- スニペット
       {
         "L3MON4D3/LuaSnip",
-        build = "make install_jsregexp",  -- 正規表現サポートをビルド
+        build = "make install_jsregexp", -- 正規表現サポートをビルド
         dependencies = {
-          "rafamadriz/friendly-snippets",  -- VSCode 互換スニペット集
+          "rafamadriz/friendly-snippets", -- VSCode 互換スニペット集
         },
         config = function()
           require("luasnip.loaders.from_vscode").lazy_load()
@@ -30,13 +30,13 @@ return {
           })
         end,
       },
-      "saadparwaiz1/cmp_luasnip",   -- LuaSnip を cmp に接続
+      "saadparwaiz1/cmp_luasnip", -- LuaSnip を cmp に接続
 
       -- アイコン
       "onsails/lspkind.nvim",
     },
     config = function()
-      local cmp     = require("cmp")
+      local cmp = require("cmp")
       local luasnip = require("luasnip")
       local lspkind = require("lspkind")
 
@@ -49,21 +49,21 @@ return {
 
         -- ウィンドウのボーダー
         window = {
-          completion    = cmp.config.window.bordered(),
+          completion = cmp.config.window.bordered(),
           documentation = cmp.config.window.bordered(),
         },
 
         -- キーマップ
         mapping = cmp.mapping.preset.insert({
-          ["<C-b>"]     = cmp.mapping.scroll_docs(-4),
-          ["<C-f>"]     = cmp.mapping.scroll_docs(4),
+          ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+          ["<C-f>"] = cmp.mapping.scroll_docs(4),
           ["<C-Space>"] = cmp.mapping.complete(),
-          ["<C-e>"]     = cmp.mapping.abort(),
+          ["<C-e>"] = cmp.mapping.abort(),
 
           -- Enter で確定（スニペットが展開中でなければ）
           ["<CR>"] = cmp.mapping.confirm({
             behavior = cmp.ConfirmBehavior.Replace,
-            select   = false,  -- 明示的に選択した項目のみ確定
+            select = false, -- 明示的に選択した項目のみ確定
           }),
 
           -- Tab / S-Tab でスニペット展開・補完候補移動
@@ -90,10 +90,10 @@ return {
 
         -- 補完ソースの優先順位
         sources = cmp.config.sources({
-          { name = "nvim_lsp",               priority = 1000 },
+          { name = "nvim_lsp", priority = 1000 },
           { name = "nvim_lsp_signature_help", priority = 800 },
-          { name = "luasnip",                priority = 750 },
-          { name = "path",                   priority = 500 },
+          { name = "luasnip", priority = 750 },
+          { name = "path", priority = 500 },
         }, {
           { name = "buffer", keyword_length = 3, priority = 100 },
         }),
@@ -101,7 +101,7 @@ return {
         -- アイテムの表示フォーマット（lspkind でアイコン付き）
         formatting = {
           format = lspkind.cmp_format({
-            mode   = "symbol_text",
+            mode = "symbol_text",
             maxwidth = 50,
             ellipsis_char = "...",
             -- TypeScript 固有の型情報を末尾に表示
@@ -123,7 +123,7 @@ return {
         -- 実験的機能
         experimental = {
           ghost_text = {
-            hl_group = "LspCodeLens",  -- インライングーストテキスト
+            hl_group = "LspCodeLens", -- インライングーストテキスト
           },
         },
       })
@@ -137,10 +137,7 @@ return {
       -- コマンドライン補完（: コマンド）
       cmp.setup.cmdline(":", {
         mapping = cmp.mapping.preset.cmdline(),
-        sources = cmp.config.sources(
-          { { name = "path" } },
-          { { name = "cmdline" } }
-        ),
+        sources = cmp.config.sources({ { name = "path" } }, { { name = "cmdline" } }),
         matching = { disallow_symbol_nonprefix_matching = false },
       })
     end,

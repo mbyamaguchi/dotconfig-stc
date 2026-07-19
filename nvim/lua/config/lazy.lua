@@ -25,54 +25,10 @@ require("lazy").setup({
     lazy = false,
     priority = 1000,
     config = function()
+      -- デフォルト値と異なる設定のみ指定する
       require("monokai-pro").setup({
-        transparent_background = false,
-        terminal_colors = true,
         devicons = true,
-        styles = {
-          comment = { italic = true },
-          keyword = { italic = true },
-          type = { italic = true },
-          storageclass = { italic = true },
-          structure = { italic = true },
-          parameter = { italic = true },
-          annotation = { italic = true },
-          tag_attribute = { italic = true },
-        },
         filter = "pro", --classic | octagon | pro | machine | ristretto | spectrum
-        day_night = {
-          enable = false,
-          day_filter = "pro",
-          night_filter = "spectrum",
-        },
-        inc_search = "background", -- underline | background
-        background_clear = {
-          "toggleterm",
-          "telescope",
-          "renamer",
-          "notify",
-        },
-        plugins = {
-          bufferline = {
-            underline_selected = false,
-            underline_visible = false,
-            underline_fill = false,
-            bold = true,
-          },
-          indent_blankline = {
-            context_hightlight = "default",
-            context_start_undeline = false,
-          },
-        },
-        override = function(scheme)
-          return {}
-        end,
-        override_palette = function(filter)
-          return {}
-        end,
-        override_scheme = function(scheme, palette, colors)
-          return {}
-        end,
       })
       vim.cmd.colorscheme("monokai-pro")
     end,
@@ -96,13 +52,19 @@ require("lazy").setup({
           {
             function()
               local clients = vim.lsp.get_clients({ bufnr = 0 })
-              if #clients == 0 then return "" end
-              local names = vim.tbl_map(function(c) return c.name end, clients)
+              if #clients == 0 then
+                return ""
+              end
+              local names = vim.tbl_map(function(c)
+                return c.name
+              end, clients)
               return " " .. table.concat(names, ", ")
             end,
             color = { fg = "#7aa2f7" },
           },
-          "encoding", "fileformat", "filetype",
+          "encoding",
+          "fileformat",
+          "filetype",
         },
       },
     },
@@ -139,14 +101,32 @@ require("lazy").setup({
     config = function()
       require("nvim-treesitter").setup()
       require("nvim-treesitter").install({
-        "typescript", "tsx", "javascript",
-        "json", "yaml", "toml",
-        "html", "css", "graphql",
-        "lua", "vim", "vimdoc",
-        "markdown", "markdown_inline",
-        "c", "cpp",
+        "typescript",
+        "tsx",
+        "javascript",
+        "json",
+        "yaml",
+        "toml",
+        "html",
+        "css",
+        "graphql",
+        "lua",
+        "vim",
+        "vimdoc",
+        "markdown",
+        "markdown_inline",
+        "c",
+        "cpp",
         "rust",
         "python",
+      })
+      -- main ブランチはハイライトを自動で有効にしないため、
+      -- パーサーのあるバッファで明示的に有効化する
+      vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("treesitter_highlight", { clear = true }),
+        callback = function(args)
+          pcall(vim.treesitter.start, args.buf)
+        end,
       })
     end,
   },
@@ -159,15 +139,31 @@ require("lazy").setup({
         move = { set_jumps = true },
       })
       local sel = require("nvim-treesitter-textobjects.select")
-      vim.keymap.set({ "x", "o" }, "af", function() sel.select_textobject("@function.outer", "textobjects") end)
-      vim.keymap.set({ "x", "o" }, "if", function() sel.select_textobject("@function.inner", "textobjects") end)
-      vim.keymap.set({ "x", "o" }, "ac", function() sel.select_textobject("@class.outer", "textobjects") end)
-      vim.keymap.set({ "x", "o" }, "ic", function() sel.select_textobject("@class.inner", "textobjects") end)
+      vim.keymap.set({ "x", "o" }, "af", function()
+        sel.select_textobject("@function.outer", "textobjects")
+      end)
+      vim.keymap.set({ "x", "o" }, "if", function()
+        sel.select_textobject("@function.inner", "textobjects")
+      end)
+      vim.keymap.set({ "x", "o" }, "ac", function()
+        sel.select_textobject("@class.outer", "textobjects")
+      end)
+      vim.keymap.set({ "x", "o" }, "ic", function()
+        sel.select_textobject("@class.inner", "textobjects")
+      end)
       local mov = require("nvim-treesitter-textobjects.move")
-      vim.keymap.set("n", "]f", function() mov.goto_next_start("@function.outer", "textobjects") end)
-      vim.keymap.set("n", "]c", function() mov.goto_next_start("@class.outer", "textobjects") end)
-      vim.keymap.set("n", "[f", function() mov.goto_previous_start("@function.outer", "textobjects") end)
-      vim.keymap.set("n", "[c", function() mov.goto_previous_start("@class.outer", "textobjects") end)
+      vim.keymap.set("n", "]f", function()
+        mov.goto_next_start("@function.outer", "textobjects")
+      end)
+      vim.keymap.set("n", "]c", function()
+        mov.goto_next_start("@class.outer", "textobjects")
+      end)
+      vim.keymap.set("n", "[f", function()
+        mov.goto_previous_start("@function.outer", "textobjects")
+      end)
+      vim.keymap.set("n", "[c", function()
+        mov.goto_previous_start("@class.outer", "textobjects")
+      end)
     end,
   },
 
@@ -229,8 +225,22 @@ require("lazy").setup({
   {
     "folke/flash.nvim",
     keys = {
-      { "s", function() require("flash").jump() end, mode = { "n", "x", "o" }, desc = "Flash" },
-      { "S", function() require("flash").treesitter() end, mode = { "n", "x", "o" }, desc = "Flash Treesitter" },
+      {
+        "s",
+        function()
+          require("flash").jump()
+        end,
+        mode = { "n", "x", "o" },
+        desc = "Flash",
+      },
+      {
+        "S",
+        function()
+          require("flash").treesitter()
+        end,
+        mode = { "n", "x", "o" },
+        desc = "Flash Treesitter",
+      },
     },
     opts = {},
   },
@@ -239,9 +249,14 @@ require("lazy").setup({
   performance = {
     rtp = {
       disabled_plugins = {
-        "gzip", "matchit", "matchparen",
-        "netrwPlugin", "tarPlugin",
-        "tohtml", "tutor", "zipPlugin",
+        "gzip",
+        "matchit",
+        "matchparen",
+        "netrwPlugin",
+        "tarPlugin",
+        "tohtml",
+        "tutor",
+        "zipPlugin",
       },
     },
   },

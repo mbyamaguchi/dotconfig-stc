@@ -87,7 +87,7 @@ return {
         pickers = {
           find_files = {
             hidden = true, -- ドットファイルも表示
-            find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+            -- find_command は指定しない（fd → rg の順に自動検出される）
           },
           live_grep = {
             additional_args = function()
