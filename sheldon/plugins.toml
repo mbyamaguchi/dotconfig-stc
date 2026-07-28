@@ -24,9 +24,10 @@ github = "romkatv/zsh-defer"
 [templates]
 defer = "{% for file in files %}zsh-defer source \"{{ file }}\"\n{% endfor %}"
 
+# Not deferred: this only appends to fpath, and it has to happen before
+# compinit runs in .zshrc or the completions never register.
 [plugins.zsh-completions]
 github = 'zsh-users/zsh-completions'
-apply = ["defer"]
 
 [plugins.zsh-autosuggestions]
 github = 'zsh-users/zsh-autosuggestions'
@@ -37,10 +38,9 @@ apply = ["defer"]
 github = 'fdellwing/zsh-bat'
 apply = ["defer"]
 
+# zdharma was deleted upstream; zdharma-continuum is the maintained fork.
 [plugins.fast-syntax-highlighting]
-github = "zdharma/fast-syntax-highlighting"
+github = "zdharma-continuum/fast-syntax-highlighting"
 apply = ["defer"]
 
-
-[plugins.starship]
-inline = 'eval "$(starship init zsh)"'
+# The starship prompt is initialised in .zshrc, guarded on the binary existing.
