@@ -95,6 +95,40 @@ install_base_packages() {
   fi
 }
 
+# zsh exports LANG=ja_JP.UTF-8. Without these generated, every subprocess
+# warns "Cannot set LC_CTYPE" and startup prints a manpath locale error.
+# Prefer system-wide locale-gen; fall back to compiling into the user's
+# XDG_DATA_HOME, which .zshenv picks up via LOCPATH and needs no root.
+setup_locale() {
+  info "Generating locales"
+
+  if sudo -n true 2>/dev/null || [ -t 0 ]; then
+    if sudo apt-get install -y locales \
+       && sudo locale-gen ja_JP.UTF-8 en_US.UTF-8 \
+       && sudo update-locale; then
+      ok "locales generated system-wide"
+      # A system locale makes the per-user copy redundant, and leaving LOCPATH
+      # pointing at it would mask the system one.
+      rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/locale"
+      return 0
+    fi
+    warn "system locale-gen failed; falling back to a per-user locale"
+  fi
+
+  if ! has localedef; then
+    warn "localedef not available; cannot generate locales"; return 1
+  fi
+  local locdir="${XDG_DATA_HOME:-$HOME/.local/share}/locale" l rc=0
+  mkdir -p "$locdir"
+  for l in ja_JP en_US; do
+    if ! localedef -i "$l" -f UTF-8 "$locdir/$l.UTF-8"; then
+      warn "localedef failed for $l.UTF-8"; rc=1
+    fi
+  done
+  [ "$rc" -eq 0 ] && ok "locales compiled into $locdir (LOCPATH)"
+  return "$rc"
+}
+
 # On Ubuntu the binaries are `fdfind` / `batcat`; the configs call `fd` / `bat`.
 link_ubuntu_aliases() {
   info "Linking fd/bat shims"
@@ -361,6 +395,7 @@ set_default_shell() {
 ALL_STEPS=(
   setup_prepare
   install_base_packages
+  setup_locale
   link_ubuntu_aliases
   install_gh
   setup_zdotdir
