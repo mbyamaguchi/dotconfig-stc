@@ -45,5 +45,3 @@
 !git/
 !git/config
 !git/ignore
-!git/hooks/
-!git/hooks/*
