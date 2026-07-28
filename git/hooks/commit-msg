@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+message_file="$1"
+
+allow_content="$(
+    git config --local --bool privacy.allowemailcontent 2>/dev/null || true
+)"
+
+if [[ "$allow_content" == "true" ]]; then
+    exit 0
+fi
+
+email_regex='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+# SSH リモート URL の git@<host> は個人アドレスではないため許可する
+allowed_regex='^([A-Za-z0-9._%+-]+@users\.noreply\.github\.com|git@[A-Za-z0-9.-]+\.[A-Za-z]{2,})$'
+
+forbidden="$(
+    grep -Eo "$email_regex" "$message_file" 2>/dev/null |
+        grep -Ev "$allowed_regex" ||
+        true
+)"
+
+if [[ -n "$forbidden" ]]; then
+    echo "ERROR: A non-noreply email address exists in the commit message." >&2
+    exit 1
+fi

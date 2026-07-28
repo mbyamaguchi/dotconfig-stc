@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+allow_personal="$(
+  git config --local --bool privacy.allowpersonalidentity 2>/dev/null || true
+  )"
+
+if [[ "$allow_personal" == "true" ]]; then
+  exit 0
+fi
+
+allowed_regex='^[A-Za-z0-9._%+-]+@users\.noreply\.github\.com$'
+
+for identity_var in GIT_AUTHOR_IDENT GIT_COMMITTER_IDENT; do
+  if ! identity="$(git var "$identity_var" 2>/dev/null)"; then
+    echo "ERROR: Git identity is not configured." >&2
+    exit 1
+  fi
+
+  email="${identity#*<}"
+  email="${email%%>*}"
+
+  if [[ ! "$email" =~ $allowed_regex ]]; then
+    echo "ERROR: A non-noreply commit identity was detected." >&2
+    echo "Configure a GitHub noreply address or explicitly allow this repository:" >&2
+    echo "  git config --local privacy.allowpersonalidentity true" >&2
+    exit 1
+  fi
+done

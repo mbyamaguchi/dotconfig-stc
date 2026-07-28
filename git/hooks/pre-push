@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+zero='0000000000000000000000000000000000000000'
+email_regex='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+# SSH リモート URL の git@<host> は個人アドレスではないため許可する
+allowed_regex='^([A-Za-z0-9._%+-]+@users\.noreply\.github\.com|git@[A-Za-z0-9.-]+\.[A-Za-z]{2,})$'
+
+allow_identity="$(
+    git config --local --bool privacy.allowpersonalidentity 2>/dev/null || true
+)"
+
+allow_content="$(
+    git config --local --bool privacy.allowemailcontent 2>/dev/null || true
+)"
+
+commits_file="$(mktemp)"
+trap 'rm -f "$commits_file"' EXIT
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+    # ブランチやタグの削除
+    if [[ "$local_oid" == "$zero" ]]; then
+        continue
+    fi
+
+    if [[ "$remote_oid" == "$zero" ]]; then
+        # 新しい参照では到達可能な全履歴を検査
+        git rev-list "$local_oid" >> "$commits_file"
+    else
+        git rev-list "$remote_oid..$local_oid" >> "$commits_file"
+    fi
+done
+
+sort -u "$commits_file" -o "$commits_file"
+
+while read -r commit_oid; do
+    [[ -z "$commit_oid" ]] && continue
+
+    if [[ "$allow_identity" != "true" ]]; then
+        forbidden_identity="$(
+            git show -s --format='%ae%n%ce' "$commit_oid" |
+                grep -Eo "$email_regex" |
+                grep -Ev "$allowed_regex" ||
+                true
+        )"
+
+        if [[ -n "$forbidden_identity" ]]; then
+            echo "ERROR: Non-noreply author or committer email detected." >&2
+            echo "Commit: $commit_oid" >&2
+            exit 1
+        fi
+    fi
+
+    if [[ "$allow_content" != "true" ]]; then
+        forbidden_message="$(
+            git show -s --format='%B' "$commit_oid" |
+                grep -Eo "$email_regex" |
+                grep -Ev "$allowed_regex" ||
+                true
+        )"
+
+        if [[ -n "$forbidden_message" ]]; then
+            echo "ERROR: Email address detected in a commit message." >&2
+            echo "Commit: $commit_oid" >&2
+            exit 1
+        fi
+
+        # 各コミットのツリー全体を検査する。
+        # 後続コミットで削除済みでも、中間履歴にあれば検出する。
+        tree_matches="$(
+            git grep -nI -E "$email_regex" "$commit_oid" -- 2>/dev/null || true
+        )"
+
+        forbidden_content="$(
+            printf '%s\n' "$tree_matches" |
+                grep -Eo "$email_regex" |
+                grep -Ev "$allowed_regex" ||
+                true
+        )"
+
+        if [[ -n "$forbidden_content" ]]; then
+            echo "ERROR: Email address detected in a committed tree." >&2
+            echo "Commit: $commit_oid" >&2
+            exit 1
+        fi
+    fi
+done < "$commits_file"
