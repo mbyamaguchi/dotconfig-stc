@@ -8,6 +8,3 @@
 
 [include]
   path = ~/.config/git/config.local
-
-[core]
-  hooksPath = ~/.config/git/hooks
