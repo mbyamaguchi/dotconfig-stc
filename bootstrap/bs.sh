@@ -142,7 +142,10 @@ cmd_install() {
     head_ "$id  ${_C_DIM}${STEP_DESC[$id]}${_C_OFF}"
     # Subshell so the step body can use `set -e` (a failure inside it stops that
     # step immediately) without ending the whole run.
-    ( set -euo pipefail; "${STEP_RUN[$id]}" )
+    # Unquoted on purpose: a registered command may carry arguments, as in
+    # "tool_install eza", and must be word-split.
+    # shellcheck disable=SC2086
+    ( set -euo pipefail; ${STEP_RUN[$id]} )
     rc=$?
     case "$rc" in
       0)           ok "$id" ;;
