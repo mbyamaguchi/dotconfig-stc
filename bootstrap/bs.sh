@@ -127,13 +127,14 @@ trap on_exit EXIT
 # install
 # ----------------------------------------------------------------------------
 cmd_install() {
-  local id rc
+  local id rc ran=0
   local -a failed=() skipped=() rootless=()
 
   mkdir -p "$LOCAL_BIN" "$FONT_DIR"
 
   for id in "${STEP_IDS[@]}"; do
     selected "$id" || continue
+    ran=$((ran + 1))
     if [ "${STEP_ROOT[$id]}" = yes ] && [ "$SUDO_OK" != 1 ]; then
       rootless+=("$id")
       skip "$id: needs root"
@@ -163,6 +164,12 @@ cmd_install() {
 
   printf '\n'
   head_ "Summary"
+  # A typo in --only would otherwise select nothing, do nothing, and exit 0 --
+  # which reads exactly like success.
+  if [ "$ran" = 0 ]; then
+    err "no step matched --only '$ONLY'. See: bs.sh list"
+    return 2
+  fi
   if [ ${#skipped[@]} -gt 0 ]; then skip "skipped: ${skipped[*]}"; fi
   if [ ${#rootless[@]} -gt 0 ]; then
     local list; list=$(IFS=,; printf '%s' "${rootless[*]}")

@@ -90,7 +90,7 @@ echo "OK: no downloads on the second run"
 echo "--- the repository must be unmodified ----------------------------------"
 if ! git -C "$HOME/.config" diff --quiet; then
   echo "FAIL: bootstrap modified tracked files:"
-  git -C "$HOME/.config" diff --stat
+  git -C "$HOME/.config" diff
   exit 1
 fi
 echo "OK: no tracked file was touched"

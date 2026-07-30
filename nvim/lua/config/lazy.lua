@@ -100,26 +100,10 @@ require("lazy").setup({
     lazy = false, -- new rewrite does not support lazy-loading
     config = function()
       require("nvim-treesitter").setup()
-      require("nvim-treesitter").install({
-        "typescript",
-        "tsx",
-        "javascript",
-        "json",
-        "yaml",
-        "toml",
-        "html",
-        "css",
-        "graphql",
-        "lua",
-        "vim",
-        "vimdoc",
-        "markdown",
-        "markdown_inline",
-        "c",
-        "cpp",
-        "rust",
-        "python",
-      })
+      -- リストは config/treesitter-parsers.lua に置いている。bootstrap も
+      -- 同じものを読んで install() の完了を待つため（install() は非同期で、
+      -- headless nvim はビルド完了前に終了してしまう）。
+      require("nvim-treesitter").install(require("config.treesitter-parsers"))
       -- main ブランチはハイライトを自動で有効にしないため、
       -- パーサーのあるバッファで明示的に有効化する
       vim.api.nvim_create_autocmd("FileType", {

@@ -60,12 +60,19 @@ step_nvim_plugins() {
   info "restoring plugins from lazy-lock.json (first run clones them; this is slow)"
   nvim --headless '+Lazy! restore' +qa 2>&1 | tail -3 || warn "Lazy restore reported problems"
 
-  info "building treesitter parsers"
-  nvim --headless '+TSUpdateSync' +qa 2>&1 | tail -3 || warn "TSUpdateSync reported problems"
+  # nvim-treesitter's rewritten branch has no :TSUpdateSync, and its install() is
+  # asynchronous -- a headless nvim exits while parsers are still downloading. So
+  # call it directly and block. The language list lives in
+  # nvim/lua/config/treesitter-parsers.lua, which lazy.lua reads too, so there is
+  # only one copy of it.
+  info "building treesitter parsers (blocking until done)"
+  nvim --headless \
+    "+lua require('nvim-treesitter').install(require('config.treesitter-parsers')):wait(900000)" \
+    +qa 2>&1 | tail -3 || warn "treesitter install reported problems"
 
-  # mason-lspconfig's ensure_installed runs on startup, so one more launch is
-  # enough to pull the LSP servers. Their versions are NOT pinned -- Mason has no
-  # lockfile; see bootstrap/README.md.
+  # mason-lspconfig's ensure_installed runs on startup, so one more launch pulls
+  # the LSP servers. Their versions are NOT pinned -- Mason has no lockfile; see
+  # bootstrap/README.md.
   info "letting Mason install the LSP servers listed in lua/config/plugins/lsp.lua"
   nvim --headless +qa 2>&1 | tail -3 || true
 }
