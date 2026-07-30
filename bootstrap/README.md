@@ -1,5 +1,8 @@
 # bootstrap
 
+**操作手順は [MANUAL.md](MANUAL.md) にあります。** このファイルは設計の記録で、
+なぜこうなっているかを説明するもの。
+
 Reproduce this `~/.config` on an Ubuntu machine, and keep its pinned versions
 current. Two commands do almost everything:
 

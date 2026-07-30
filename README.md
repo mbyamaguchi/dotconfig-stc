@@ -51,6 +51,9 @@ bootstrap/bs.sh           # install it
 bootstrap/bs.sh doctor    # where does this machine differ from the manifests?
 ```
 
-See [bootstrap/README.md](bootstrap/README.md) for the tool list, how to add a
-tool, what is pinned and what deliberately is not.
+### マニュアル
+
+- **[bootstrap/MANUAL.md](bootstrap/MANUAL.md)** — 操作手順、ツールの追加方法、
+  トラブルシューティング、手作業が必要なこと
+- [bootstrap/README.md](bootstrap/README.md) — 設計の記録（なぜこの構成なのか）
 
