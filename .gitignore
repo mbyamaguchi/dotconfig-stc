@@ -5,8 +5,15 @@
 !.gitignore
 
 # bootstrap
+# The `*` above ignores every level, so each directory needs its own negation:
+# without `!bootstrap/steps/` git never descends into it and `!bootstrap/steps/*`
+# is never consulted.
 !bootstrap/
 !bootstrap/*
+!bootstrap/steps/
+!bootstrap/steps/*
+!bootstrap/test/
+!bootstrap/test/*
 
 # zsh
 !zsh/
@@ -20,7 +27,11 @@
 
 
 # nvim
+# lazy-lock.json is the single most valuable pin in this repo: without it a fresh
+# machine clones HEAD of all ~35 plugins instead of the revisions that are known
+# to work together. bootstrap replays it with `nvim --headless '+Lazy! restore'`.
 !nvim/
+!nvim/lazy-lock.json
 !nvim/init.lua
 !nvim/lua/
 !nvim/lua/*
@@ -42,6 +53,9 @@
 !yt-dlp/*
 
 # git
+# config.local itself stays untracked -- it holds the real address and signing
+# key. Only the template is tracked, and bootstrap copies it into place.
 !git/
 !git/config
+!git/config.local.template
 !git/ignore

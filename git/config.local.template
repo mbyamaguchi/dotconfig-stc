@@ -1,0 +1,27 @@
+# Machine-local git settings. Copy to ~/.config/git/config.local and edit.
+#
+#   cp ~/.config/git/config.local.template ~/.config/git/config.local
+#
+# `bs.sh` does this for you when the file is missing, and never overwrites it.
+# It is included from git/config and stays untracked so a real address and a
+# signing key never land in a public repository.
+#
+# git/config sets user.useConfigOnly, so a commit will refuse to run until a
+# real identity is in place -- that is intentional.
+
+[user]
+	# The tracked git/config uses the GitHub noreply address. Override it here
+	# for machines or accounts that should commit under something else.
+	# email = you@example.com
+
+	# GPG key id used to sign commits. `gpg --list-secret-keys --keyid-format=long`
+	# signingkey = 0000000000000000
+
+[commit]
+	# Requires signingkey above. zsh/.zshrc exports GPG_TTY so pinentry knows
+	# which terminal to prompt on; without it signing fails with
+	# "Inappropriate ioctl for device".
+	# gpgsign = true
+
+# Credential helpers for GitHub are not secret and do not belong here -- run
+# `gh auth setup-git` after `gh auth login` and gh writes them for you.
