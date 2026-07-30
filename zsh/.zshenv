@@ -43,9 +43,13 @@ path=(
     $HOME/.cargo/bin
     $XDG_DATA_HOME/bob/nvim-bin
     $HOME/.pixi/bin
-    $PNPM_HOME
+    $PNPM_HOME/bin              # pnpm >=10 puts `pnpm add -g` binaries here
+    $PNPM_HOME                  # ...and its own launcher scripts here
+    $HOME/.local/go/bin         # pinned Go (apt's golang on noble is EOL 1.22)
     ${GOPATH:-$HOME/go}/bin
     $HOME/.nimble/bin
+    $HOME/.elan/bin             # Lean
+    $HOME/.sdkman/candidates/java/current/bin   # SDKMAN's java, without sourcing its init
     $XDG_DATA_HOME/zig
     $DOTNET_ROOT
     /usr/local/sbin

@@ -1,7 +1,33 @@
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not (vim.uv or vim.loop).fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
-  local out = vim.fn.system({ "git", "clone", "--filter=blob:none", "--branch=stable", lazyrepo, lazypath })
+
+  -- lazy-lock.json pins lazy.nvim along with everything else, so clone that
+  -- exact commit instead of whatever the `stable` tag points at today.
+  -- 一致させないと、新規マシンでは lazy.nvim 自身だけがロックファイルと
+  -- 違う版になり、起動時に lazy が lazy-lock.json を書き換えてしまう。
+  local pinned
+  do
+    local f = io.open(vim.fn.stdpath("config") .. "/lazy-lock.json", "r")
+    if f then
+      local ok, lock = pcall(vim.json.decode, f:read("*a"))
+      f:close()
+      if ok and type(lock) == "table" and lock["lazy.nvim"] then
+        pinned = lock["lazy.nvim"].commit
+      end
+    end
+  end
+
+  local args = { "git", "clone", "--filter=blob:none", lazyrepo, lazypath }
+  if not pinned then
+    -- ロックファイルが無いとき（まったく新規の環境）だけ stable にフォールバック
+    table.insert(args, 5, "--branch=stable")
+  end
+
+  local out = vim.fn.system(args)
+  if vim.v.shell_error == 0 and pinned then
+    out = vim.fn.system({ "git", "-C", lazypath, "checkout", "--quiet", pinned })
+  end
   if vim.v.shell_error ~= 0 then
     vim.api.nvim_echo({
       { "Failed to clone lazy.nvim:\n", "ErrorMsg" },
@@ -100,26 +126,10 @@ require("lazy").setup({
     lazy = false, -- new rewrite does not support lazy-loading
     config = function()
       require("nvim-treesitter").setup()
-      require("nvim-treesitter").install({
-        "typescript",
-        "tsx",
-        "javascript",
-        "json",
-        "yaml",
-        "toml",
-        "html",
-        "css",
-        "graphql",
-        "lua",
-        "vim",
-        "vimdoc",
-        "markdown",
-        "markdown_inline",
-        "c",
-        "cpp",
-        "rust",
-        "python",
-      })
+      -- リストは config/treesitter-parsers.lua に置いている。bootstrap も
+      -- 同じものを読んで install() の完了を待つため（install() は非同期で、
+      -- headless nvim はビルド完了前に終了してしまう）。
+      require("nvim-treesitter").install(require("config.treesitter-parsers"))
       -- main ブランチはハイライトを自動で有効にしないため、
       -- パーサーのあるバッファで明示的に有効化する
       vim.api.nvim_create_autocmd("FileType", {

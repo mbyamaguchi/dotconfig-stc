@@ -1,0 +1,42 @@
+# Prebuilt binaries fetched from GitHub releases into ~/.local/bin.
+#
+# Columns (tab separated):
+#   name     command name, and the step id becomes `tool:<name>`
+#   ref      the upstream release tag, VERBATIM. Some projects prefix it with
+#            `v` and some do not, so storing the tag itself avoids a column for
+#            the prefix -- {VERSION} below is just `ref` with a leading `v`
+#            stripped. `latest` means resolve at install time (deliberate float).
+#   min      lowest version our configs actually work with, or `-`. Enforced
+#            when ref=latest; recorded as a contract either way.
+#   repo     owner/name on GitHub
+#   asset    release asset filename. Placeholders:
+#              {TAG}       ref verbatim              e.g. v0.23.5 / 0.8.5
+#              {VERSION}   ref without leading v     e.g. 0.23.5
+#              {ARCH}      x86_64                    (bare machine name)
+#              {RUST_GNU}  x86_64-unknown-linux-gnu
+#              {RUST_MUSL} x86_64-unknown-linux-musl
+#              {GOARCH}    amd64                     (Go-style naming)
+#              {BOB_ARCH}  x86_64                    (bob calls arm64 "arm")
+#   install  bin:<names>  install these binaries into ~/.local/bin
+#            font         install every *.ttf into ~/.local/share/fonts
+#
+# Why ~/.local/bin and not apt: it comes before /usr/bin in zsh/.zshenv, so a
+# pinned copy here shadows any distro package without sudo. Several of these are
+# only in apt on this machine via the third-party debian.griffo.io repo, which a
+# fresh install would not have -- fetching them here is what makes the two match.
+#
+# Bump every ref with `bs.sh update`, review the diff, then commit.
+#
+# name	ref	min	repo	asset	install
+eza	v0.23.5	0.20.0	eza-community/eza	eza_{RUST_GNU}.tar.gz	bin:eza
+fzf	v0.74.1	0.48.0	junegunn/fzf	fzf-{VERSION}-linux_{GOARCH}.tar.gz	bin:fzf
+zoxide	v0.10.0	0.9.4	ajeetdsouza/zoxide	zoxide-{VERSION}-{RUST_MUSL}.tar.gz	bin:zoxide
+yazi	v26.5.6	25.0.0	sxyazi/yazi	yazi-{RUST_GNU}.zip	bin:yazi,ya
+starship	v1.25.1	1.20.0	starship/starship	starship-{RUST_MUSL}.tar.gz	bin:starship
+sheldon	0.8.5	0.7.0	rossmacarthur/sheldon	sheldon-{VERSION}-{RUST_MUSL}.tar.gz	bin:sheldon
+bob	v4.1.7	4.0.0	MordechaiHadad/bob	bob-linux-{BOB_ARCH}.zip	bin:bob
+uv	0.11.29	0.5.0	astral-sh/uv	uv-{RUST_GNU}.tar.gz	bin:uv,uvx
+pixi	v0.67.2	0.40.0	prefix-dev/pixi	pixi-{RUST_MUSL}.tar.gz	bin:pixi
+cica	v5.0.3	-	miiton/Cica	Cica_{TAG}_without_emoji.zip	font
+yt-dlp	latest	-	yt-dlp/yt-dlp	yt-dlp_linux	bin:yt-dlp
+stylua	v2.5.2	2.0.0	JohnnyMorganz/StyLua	stylua-linux-{ARCH}-musl.zip	bin:stylua

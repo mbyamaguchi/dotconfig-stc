@@ -1,462 +1,343 @@
 #!/usr/bin/env bash
 # =============================================================================
 # bootstrap/bs.sh
-# Bootstrap a fresh machine for this ~/.config (DotConfig feat. STC).
+# Reproduce this ~/.config on an Ubuntu machine, and keep its pins current.
 #
-# Installs every tool referenced by the configs:
-#   zsh / git / build tools / ripgrep / fd / bat / ffmpeg / xsel / tmux  (apt)
-#   gh, rust(cargo), bob+neovim, eza, fzf, zoxide, yazi, go,
-#   node(nvm)+pnpm, sheldon, starship, pixi, uv, yt-dlp, Cica font
+#   bs.sh                 install everything (idempotent; safe to re-run)
+#   bs.sh update          bump every pinned version, then review the git diff
+#   bs.sh doctor          report where the machine differs from the manifests
+#   bs.sh list            list the steps
 #
-# Usage:
-#   ./bs.sh                 # run everything
-#   ./bs.sh install_eza ... # run only the named step(s)
+# What goes where:
+#   tools.tsv     prebuilt binaries from GitHub releases -> ~/.local/bin
+#   apt.tsv       apt package set, by group
+#   runtimes.tsv  nvim / node / pnpm / go / rust, each via its own manager
+#   steps/*.sh    one file per concern, registering steps in numeric order
 #
-# Idempotent: every step skips work that is already done. Steps run
-# independently; a failing step is reported at the end but does not abort
-# the rest of the run.
+# Adding a tool is one line in tools.tsv. Nothing else.
 # =============================================================================
 
+# Not -e: a failing step is collected and reported at the end rather than
+# aborting the run, so one broken download does not cost you the whole install.
+# Each step body does run under -e, inside its own subshell (see dispatch).
 set -uo pipefail
 
-# ----------------------------------------------------------------------------
-# Settings
-# ----------------------------------------------------------------------------
-NVIM_VERSION="${NVIM_VERSION:-stable}"
-NODE_VERSION="${NODE_VERSION:---lts}"        # passed to `nvm install`
-
-LOCAL_BIN="$HOME/.local/bin"
-FONT_DIR="$HOME/.local/share/fonts"
-NVM_DIR="$HOME/.config/nvm"
-GO_ROOT="$HOME/.local/go"
+BOOTSTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+. "$BOOTSTRAP_DIR/lib.sh"
 
 # ----------------------------------------------------------------------------
-# Helpers
+# Step registry
 # ----------------------------------------------------------------------------
-info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
-ok()   { printf '\033[1;32m  OK\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m  !!\033[0m %s\n' "$*" >&2; }
+declare -a STEP_IDS=()
+declare -A STEP_DESC=() STEP_ROOT=() STEP_RUN=()
 
-has() { command -v "$1" >/dev/null 2>&1; }
-
-# Latest GitHub release asset URL matching a pattern.
-latest_asset_url() {
-  local repo="$1" pattern="$2"
-  curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" \
-    | grep -oE '"browser_download_url": *"[^"]+"' \
-    | cut -d'"' -f4 \
-    | grep -E "$pattern" \
-    | head -n1
+# register <id> <needs_root: yes|no> <description> <run_fn>
+# Verification lives in bootstrap/tool, not next to the step -- see the doctor
+# section below for why.
+register() {
+  STEP_IDS+=("$1")
+  STEP_ROOT["$1"]="$2"
+  STEP_DESC["$1"]="$3"
+  STEP_RUN["$1"]="$4"
 }
 
-# Download an archive, extract it into a temp dir, and run a callback that
-# installs the wanted binaries. Usage: fetch_archive <url> <ext> <callback>
-fetch_archive() {
-  local url="$1" ext="$2" cb="$3" tmp rc=0
-  tmp="$(mktemp -d)"
-  if curl -fsSL "$url" -o "$tmp/dl.$ext"; then
-    case "$ext" in
-      zip)            unzip -q -o "$tmp/dl.$ext" -d "$tmp" ;;
-      tar.gz|tgz)     tar -xzf "$tmp/dl.$ext" -C "$tmp" ;;
-      tar.xz|txz)     tar -xJf "$tmp/dl.$ext" -C "$tmp" ;;
-      *)              warn "unknown archive ext: $ext"; rc=1 ;;
-    esac
-    if [ "$rc" -eq 0 ]; then "$cb" "$tmp" || rc=$?; fi
-  else
-    rc=1
-  fi
-  rm -rf "$tmp"
-  return "$rc"
-}
-
-# ----------------------------------------------------------------------------
-# Steps
-# ----------------------------------------------------------------------------
-setup_prepare() {
-  info "Preparing directories and PATH"
-  mkdir -p "$LOCAL_BIN" "$FONT_DIR"
-  export PATH="$LOCAL_BIN:$PATH"
-  export DEBIAN_FRONTEND=noninteractive
-  ok "directories ready"
-}
-
-install_base_packages() {
-  info "Installing base apt packages"
-  if ! sudo apt-get update -y; then
-    warn "apt update failed"; return 1
-  fi
-  if sudo apt-get install -y \
-      git wget curl zsh unzip tar xz-utils \
-      build-essential ca-certificates gnupg fontconfig \
-      ripgrep fd-find bat ffmpeg xsel tmux; then
-    ok "base packages installed"
-  else
-    warn "failed to install base packages"; return 1
-  fi
-}
-
-# zsh exports LANG=ja_JP.UTF-8. Without these generated, every subprocess
-# warns "Cannot set LC_CTYPE" and startup prints a manpath locale error.
-# Prefer system-wide locale-gen; fall back to compiling into the user's
-# XDG_DATA_HOME, which .zshenv picks up via LOCPATH and needs no root.
-setup_locale() {
-  info "Generating locales"
-
-  if sudo -n true 2>/dev/null || [ -t 0 ]; then
-    if sudo apt-get install -y locales \
-       && sudo locale-gen ja_JP.UTF-8 en_US.UTF-8 \
-       && sudo update-locale; then
-      ok "locales generated system-wide"
-      # A system locale makes the per-user copy redundant, and leaving LOCPATH
-      # pointing at it would mask the system one.
-      rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/locale"
-      return 0
-    fi
-    warn "system locale-gen failed; falling back to a per-user locale"
-  fi
-
-  if ! has localedef; then
-    warn "localedef not available; cannot generate locales"; return 1
-  fi
-  local locdir="${XDG_DATA_HOME:-$HOME/.local/share}/locale" l rc=0
-  mkdir -p "$locdir"
-  for l in ja_JP en_US; do
-    if ! localedef -i "$l" -f UTF-8 "$locdir/$l.UTF-8"; then
-      warn "localedef failed for $l.UTF-8"; rc=1
-    fi
+load_steps() {
+  local f
+  for f in "$BOOTSTRAP_DIR"/steps/*.sh; do
+    [ -r "$f" ] || continue
+    # shellcheck source=/dev/null
+    . "$f"
   done
-  [ "$rc" -eq 0 ] && ok "locales compiled into $locdir (LOCPATH)"
-  return "$rc"
-}
-
-# On Ubuntu the binaries are `fdfind` / `batcat`; the configs call `fd` / `bat`.
-link_ubuntu_aliases() {
-  info "Linking fd/bat shims"
-  if has fdfind && ! has fd; then ln -sf "$(command -v fdfind)" "$LOCAL_BIN/fd"; fi
-  if has batcat && ! has bat; then ln -sf "$(command -v batcat)" "$LOCAL_BIN/bat"; fi
-  ok "fd/bat available"
-}
-
-install_gh() {
-  if has gh; then ok "gh already installed"; return 0; fi
-  info "Installing GitHub CLI (gh)"
-  sudo mkdir -p -m 755 /etc/apt/keyrings
-  wget -nv -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
-  sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-  if sudo apt-get update -y && sudo apt-get install -y gh; then
-    ok "gh installed"
-  else
-    warn "failed to install gh"; return 1
-  fi
-}
-
-setup_zdotdir() {
-  local zshenv="/etc/zsh/zshenv"
-  info "Setting ZDOTDIR in $zshenv"
-  if [ ! -e "$zshenv" ]; then
-    sudo mkdir -p /etc/zsh
-    sudo touch "$zshenv"
-  fi
-  if sudo grep -q 'ZDOTDIR' "$zshenv"; then
-    ok "ZDOTDIR already set"
-  else
-    echo 'export ZDOTDIR="$HOME/.config/zsh"' | sudo tee -a "$zshenv" >/dev/null
-    ok "ZDOTDIR added"
-  fi
-}
-
-install_rust() {
-  if has cargo; then ok "rust already installed"; return 0; fi
-  info "Installing Rust (rustup)"
-  if curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path; then
-    # shellcheck disable=SC1091
-    . "$HOME/.cargo/env"
-    ok "rust installed (~/.cargo)"
-  else
-    warn "failed to install rust"; return 1
-  fi
-}
-
-install_bob_and_neovim() {
-  local arch; arch="$(uname -m)"
-
-  if has bob; then
-    ok "bob already installed"
-  else
-    info "Installing bob (neovim version manager)"
-    if [ "$arch" = "x86_64" ]; then
-      local url
-      url="$(latest_asset_url MordechaiHadad/bob 'bob-linux-x86_64\.zip$')"
-      if [ -z "$url" ]; then warn "could not find bob release"; return 1; fi
-      fetch_archive "$url" zip _install_bob || { warn "failed to install bob"; return 1; }
-    elif has cargo; then
-      cargo install bob-nvim || { warn "failed to cargo install bob-nvim"; return 1; }
-    else
-      warn "bob prebuilt is x86_64 only and cargo is missing (arch: $arch)"; return 1
-    fi
-    ok "bob installed"
-  fi
-
-  info "Installing Neovim ($NVIM_VERSION) via bob"
-  if bob use "$NVIM_VERSION"; then
-    ok "Neovim ready (~/.local/share/bob/nvim-bin)"
-  else
-    warn "failed to install Neovim"; return 1
-  fi
-}
-_install_bob() { install -m 0755 "$(find "$1" -type f -name bob | head -n1)" "$LOCAL_BIN/bob"; }
-
-install_eza() {
-  if has eza; then ok "eza already installed"; return 0; fi
-  info "Installing eza"
-  local url
-  url="$(latest_asset_url eza-community/eza 'eza_x86_64-unknown-linux-gnu\.tar\.gz$')"
-  if [ -z "$url" ]; then warn "could not find eza release"; return 1; fi
-  fetch_archive "$url" tar.gz _install_eza && ok "eza installed" || { warn "failed to install eza"; return 1; }
-}
-_install_eza() { install -m 0755 "$(find "$1" -type f -name eza | head -n1)" "$LOCAL_BIN/eza"; }
-
-install_fzf() {
-  # zshrc uses `fzf --zsh`, which needs fzf >= 0.48 (newer than apt's).
-  if has fzf && fzf --zsh >/dev/null 2>&1; then ok "fzf already installed"; return 0; fi
-  info "Installing fzf"
-  local url
-  url="$(latest_asset_url junegunn/fzf 'fzf-[0-9.]+-linux_amd64\.tar\.gz$')"
-  if [ -z "$url" ]; then warn "could not find fzf release"; return 1; fi
-  fetch_archive "$url" tar.gz _install_fzf && ok "fzf installed" || { warn "failed to install fzf"; return 1; }
-}
-_install_fzf() { install -m 0755 "$(find "$1" -type f -name fzf | head -n1)" "$LOCAL_BIN/fzf"; }
-
-install_zoxide() {
-  if has zoxide; then ok "zoxide already installed"; return 0; fi
-  info "Installing zoxide"
-  if curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh \
-      | sh -s -- --bin-dir "$LOCAL_BIN"; then
-    ok "zoxide installed"
-  else
-    warn "failed to install zoxide"; return 1
-  fi
-}
-
-install_yazi() {
-  if has yazi; then ok "yazi already installed"; return 0; fi
-  info "Installing yazi"
-  local url
-  url="$(latest_asset_url sxyazi/yazi 'yazi-x86_64-unknown-linux-gnu\.zip$')"
-  if [ -z "$url" ]; then warn "could not find yazi release"; return 1; fi
-  fetch_archive "$url" zip _install_yazi && ok "yazi installed" || { warn "failed to install yazi"; return 1; }
-}
-_install_yazi() {
-  install -m 0755 "$(find "$1" -type f -name yazi | head -n1)" "$LOCAL_BIN/yazi"
-  local ya; ya="$(find "$1" -type f -name ya | head -n1)"
-  [ -n "$ya" ] && install -m 0755 "$ya" "$LOCAL_BIN/ya" || true
-}
-
-install_go() {
-  # zshrc runs `go env GOPATH`, so `go` must be on PATH ($LOCAL_BIN is).
-  if has go; then ok "go already installed ($(go version | awk '{print $3}'))"; return 0; fi
-  info "Installing Go"
-  local ver url
-  ver="$(curl -fsSL https://go.dev/VERSION?m=text | head -n1)"
-  [ -n "$ver" ] || { warn "could not resolve latest go version"; return 1; }
-  url="https://go.dev/dl/${ver}.linux-amd64.tar.gz"
-  rm -rf "$GO_ROOT"
-  mkdir -p "$(dirname "$GO_ROOT")"
-  if fetch_archive "$url" tar.gz _install_go; then
-    ln -sf "$GO_ROOT/bin/go" "$LOCAL_BIN/go"
-    ln -sf "$GO_ROOT/bin/gofmt" "$LOCAL_BIN/gofmt"
-    ok "go installed ($ver)"
-  else
-    warn "failed to install go"; return 1
-  fi
-}
-_install_go() { mv "$1/go" "$GO_ROOT"; }
-
-install_node() {
-  info "Installing nvm + Node.js"
-  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
-    if [ -d "$NVM_DIR/.git" ]; then
-      git -C "$NVM_DIR" fetch --tags -q origin || true
-    else
-      git clone -q https://github.com/nvm-sh/nvm.git "$NVM_DIR" || { warn "failed to clone nvm"; return 1; }
-    fi
-    local tag
-    tag="$(git -C "$NVM_DIR" describe --abbrev=0 --tags 2>/dev/null)"
-    [ -n "$tag" ] && git -C "$NVM_DIR" checkout -q "$tag"
-  fi
-  # shellcheck disable=SC1091
-  export NVM_DIR; . "$NVM_DIR/nvm.sh"
-  if nvm install "$NODE_VERSION" && nvm alias default "$NODE_VERSION" >/dev/null 2>&1; then
-    ok "node installed ($(node -v 2>/dev/null))"
-  else
-    warn "failed to install node"; return 1
-  fi
-}
-
-install_pnpm() {
-  if has pnpm; then ok "pnpm already installed"; return 0; fi
-  info "Installing pnpm"
-  if curl -fsSL https://get.pnpm.io/install.sh | env SHELL="$(command -v bash)" sh -; then
-    ok "pnpm installed (~/.local/share/pnpm)"
-  else
-    warn "failed to install pnpm"; return 1
-  fi
-}
-
-install_sheldon() {
-  if has sheldon; then ok "sheldon already installed"; return 0; fi
-  info "Installing sheldon (zsh plugin manager)"
-  if curl --proto '=https' -fLsS https://rossmacarthur.github.io/install/crate.sh \
-      | bash -s -- --repo rossmacarthur/sheldon --to "$LOCAL_BIN"; then
-    ok "sheldon installed"
-  else
-    warn "failed to install sheldon"; return 1
-  fi
-}
-
-install_starship() {
-  if has starship; then ok "starship already installed"; return 0; fi
-  info "Installing starship"
-  if curl -sS https://starship.rs/install.sh | sh -s -- -y -b "$LOCAL_BIN"; then
-    ok "starship installed"
-  else
-    warn "failed to install starship"; return 1
-  fi
-}
-
-install_pixi() {
-  if has pixi; then ok "pixi already installed"; return 0; fi
-  info "Installing pixi"
-  if curl -fsSL https://pixi.sh/install.sh | bash; then
-    ok "pixi installed (~/.pixi/bin)"
-  else
-    warn "failed to install pixi"; return 1
-  fi
-}
-
-install_uv() {
-  if has uv; then ok "uv already installed"; return 0; fi
-  info "Installing uv"
-  if curl -LsSf https://astral.sh/uv/install.sh | sh; then
-    ok "uv installed (~/.local/bin)"
-  else
-    warn "failed to install uv"; return 1
-  fi
-}
-
-install_ytdlp() {
-  if has yt-dlp; then ok "yt-dlp already installed"; return 0; fi
-  info "Installing yt-dlp"
-  if curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-      -o "$LOCAL_BIN/yt-dlp"; then
-    chmod a+rx "$LOCAL_BIN/yt-dlp"
-    ok "yt-dlp installed (ffmpeg from base packages)"
-  else
-    warn "failed to install yt-dlp"; return 1
-  fi
-}
-
-install_cica_font() {
-  if ls "$FONT_DIR"/Cica*.ttf >/dev/null 2>&1; then
-    ok "Cica font already installed"; return 0
-  fi
-  info "Installing Cica font"
-  local url
-  url="$(latest_asset_url miiton/Cica '\.zip$' | grep -iv 'with_emoji' | head -n1)"
-  [ -n "$url" ] || url="$(latest_asset_url miiton/Cica '\.zip$')"
-  [ -n "$url" ] || { warn "could not find Cica release"; return 1; }
-  fetch_archive "$url" zip _install_cica && ok "Cica font installed" || { warn "failed to install Cica"; return 1; }
-}
-_install_cica() {
-  find "$1" -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \;
-  fc-cache -f "$FONT_DIR" >/dev/null 2>&1 || true
-}
-
-set_default_shell() {
-  local zsh_path; zsh_path="$(command -v zsh || true)"
-  [ -n "$zsh_path" ] || { warn "zsh not found"; return 1; }
-  if [ "${SHELL:-}" = "$zsh_path" ]; then
-    ok "default shell is already zsh"; return 0
-  fi
-  info "Setting default shell to zsh"
-  if chsh -s "$zsh_path" 2>/dev/null || sudo chsh -s "$zsh_path" "$USER" 2>/dev/null; then
-    ok "default shell set to zsh"
-  else
-    warn "failed to change default shell (run: chsh -s $zsh_path)"; return 1
-  fi
 }
 
 # ----------------------------------------------------------------------------
-# Run
+# Selection
 # ----------------------------------------------------------------------------
-ALL_STEPS=(
-  setup_prepare
-  install_base_packages
-  setup_locale
-  link_ubuntu_aliases
-  install_gh
-  setup_zdotdir
-  install_rust
-  install_bob_and_neovim
-  install_eza
-  install_fzf
-  install_zoxide
-  install_yazi
-  install_go
-  install_node
-  install_pnpm
-  install_sheldon
-  install_starship
-  install_pixi
-  install_uv
-  install_ytdlp
-  install_cica_font
-  set_default_shell
-)
+ONLY="" SKIP_LIST="" DRY_RUN=0 NO_SUDO=0 ARCH_OVERRIDE=""
+
+# --only/--skip match on a prefix, so `--only tool:` selects every tool and
+# `--only tool:eza` selects one.
+_matches() {
+  local id="$1" list="$2" p
+  local -a pat=()
+  IFS=, read -r -a pat <<<"$list"
+  for p in "${pat[@]}"; do
+    [ -n "$p" ] || continue
+    case "$id" in "$p"*) return 0 ;; esac
+  done
+  return 1
+}
+
+selected() {
+  local id="$1"
+  [ -n "$SKIP_LIST" ] && _matches "$id" "$SKIP_LIST" && return 1
+  [ -z "$ONLY" ] && return 0
+  _matches "$id" "$ONLY"
+}
+
+# ----------------------------------------------------------------------------
+# Root access
+# ----------------------------------------------------------------------------
+SUDO_OK=0 SUDO_CMD=""
+_SUDO_KEEPALIVE_PID=""
+
+sudo_init() {
+  # Running the whole script through sudo would install into /root/.local and
+  # chown half of $HOME to root. Refuse instead of producing a broken machine.
+  if [ "$(id -u)" = 0 ] && [ -n "${SUDO_USER:-}" ]; then
+    die "do not run this with sudo -- run it as your own user; individual commands elevate themselves"
+  fi
+
+  if [ "$NO_SUDO" = 1 ]; then
+    SUDO_OK=0
+    return 0
+  fi
+  if [ "$(id -u)" = 0 ]; then
+    SUDO_OK=1 SUDO_CMD=""
+    return 0
+  fi
+  has sudo || { SUDO_OK=0; return 0; }
+
+  # A dry run changes nothing, so do not make the user authenticate just to see
+  # the plan -- and do show them the root steps rather than skipping them.
+  if [ "$DRY_RUN" = 1 ]; then
+    SUDO_OK=1 SUDO_CMD="sudo"
+    return 0
+  fi
+
+  # shellcheck disable=SC2034  # SUDO_CMD is read by run_sudo in lib.sh
+  # One prompt for the whole run, then keep the timestamp warm so a long apt
+  # step cannot be interrupted by a second password prompt.
+  if sudo -n true 2>/dev/null || { [ -t 0 ] && sudo -v; }; then
+    SUDO_OK=1 SUDO_CMD="sudo"
+    while true; do sudo -n true 2>/dev/null || break; sleep 50; done &
+    _SUDO_KEEPALIVE_PID=$!
+  else
+    SUDO_OK=0
+  fi
+}
+
+on_exit() {
+  [ -n "$_SUDO_KEEPALIVE_PID" ] && kill "$_SUDO_KEEPALIVE_PID" 2>/dev/null
+  tmp_cleanup
+}
+trap on_exit EXIT
+
+# ----------------------------------------------------------------------------
+# install
+# ----------------------------------------------------------------------------
+cmd_install() {
+  local id rc ran=0
+  local -a failed=() skipped=() rootless=()
+
+  mkdir -p "$LOCAL_BIN" "$FONT_DIR"
+
+  for id in "${STEP_IDS[@]}"; do
+    selected "$id" || continue
+    ran=$((ran + 1))
+    if [ "${STEP_ROOT[$id]}" = yes ] && [ "$SUDO_OK" != 1 ]; then
+      rootless+=("$id")
+      skip "$id: needs root"
+      continue
+    fi
+
+    # Before each step, not just once at startup: steps run in subshells, so a
+    # directory created by one (bob's nvim-bin, $PNPM_HOME, ~/.cargo/bin) is
+    # invisible to the next unless the parent re-scans. Without this the plugin
+    # restore silently skipped on a fresh machine, because `nvim` had just been
+    # installed into a directory that was not on PATH when the run began.
+    path_refresh
+    head_ "$id  ${_C_DIM}${STEP_DESC[$id]}${_C_OFF}"
+    # Subshell so the step body can use `set -e` (a failure inside it stops that
+    # step immediately) without ending the whole run.
+    # Unquoted on purpose: a registered command may carry arguments, as in
+    # "tool_install eza", and must be word-split.
+    # shellcheck disable=SC2086
+    ( set -euo pipefail; ${STEP_RUN[$id]} )
+    rc=$?
+    case "$rc" in
+      0)           ok "$id" ;;
+      "$SKIP_RC")  skipped+=("$id") ;;
+      *)           err "$id failed (exit $rc)"; failed+=("$id") ;;
+    esac
+  done
+
+  printf '\n'
+  head_ "Summary"
+  # A typo in --only would otherwise select nothing, do nothing, and exit 0 --
+  # which reads exactly like success.
+  if [ "$ran" = 0 ]; then
+    err "no step matched --only '$ONLY'. See: bs.sh list"
+    return 2
+  fi
+  if [ ${#skipped[@]} -gt 0 ]; then skip "skipped: ${skipped[*]}"; fi
+  if [ ${#rootless[@]} -gt 0 ]; then
+    local list; list=$(IFS=,; printf '%s' "${rootless[*]}")
+    warn "skipped ${#rootless[@]} step(s) needing root. When you have sudo:"
+    warn "    $BOOTSTRAP_DIR/bs.sh --only $list"
+  fi
+  if [ ${#failed[@]} -gt 0 ]; then
+    err "failed: ${failed[*]}"
+    err "re-run just those with: bs.sh --only $(IFS=,; printf '%s' "${failed[*]}")"
+    return 1
+  fi
+  ok "no failures"
+  next_steps
+}
+
+next_steps() {
+  cat <<EOF
+
+--- Next steps --------------------------------------------------------------
+  * Start a new shell: exec zsh
+  * Check the result:  $BOOTSTRAP_DIR/bs.sh doctor
+EOF
+  if is_wsl; then
+    cat <<'EOF'
+  * WSL: Windows terminals do not read Linux-side fonts. Install Cica on the
+    Windows side too and select it as the terminal font.
+EOF
+    if has wslpath && has wslvar; then
+      local up
+      up=$(wslpath "$(wslvar USERPROFILE 2>/dev/null)" 2>/dev/null) || up=""
+      [ -n "$up" ] && printf '      TTFs are in %s -- copy them to %s/Downloads and double-click.\n' \
+        "$FONT_DIR" "$up"
+    fi
+  fi
+  printf -- '-----------------------------------------------------------------------------\n'
+}
+
+# ----------------------------------------------------------------------------
+# list
+# ----------------------------------------------------------------------------
+cmd_list() {
+  printf '%-22s %-6s %s\n' ID ROOT DESCRIPTION
+  printf '%-22s %-6s %s\n' '---' '----' '-----------'
+  local id
+  for id in "${STEP_IDS[@]}"; do
+    printf '%-22s %-6s %s\n' "$id" "${STEP_ROOT[$id]}" "${STEP_DESC[$id]}"
+  done
+}
+
+# ----------------------------------------------------------------------------
+# doctor / update -- delegated to bootstrap/tool
+# ----------------------------------------------------------------------------
+# These two are the parts with real logic: HTTP, JSON and version algebra, which
+# is also where the shell version had its actual bugs (0.9.3 comparing above
+# 0.10.0; tags with and without a v prefix). They live in Go so `go test` can pin
+# that behaviour down.
+#
+# They are deliberately kept out of the install path: a bare machine has no Go
+# until `bs.sh` has installed it, and neither doctor nor update is needed before
+# then -- nothing can be behind upstream on day one.
+#
+# The binary is built on first use and cached outside the repository. It is never
+# committed: it would be per-architecture, impossible to verify by reading, and
+# stale the moment a .go file changed.
+BSTOOL="${XDG_CACHE_HOME:-$HOME/.cache}/dotconfig/bstool"
+
+bstool() {
+  local src="$BOOTSTRAP_DIR/tool"
+  if [ ! -x "$BSTOOL" ] || [ -n "$(find "$src" -name '*.go' -newer "$BSTOOL" -print -quit 2>/dev/null)" ]; then
+    if ! has go; then
+      err "doctor and update need Go, which bs.sh itself installs."
+      err "Run: $BOOTSTRAP_DIR/bs.sh --only go"
+      return 1
+    fi
+    info "building the doctor/update tool"
+    mkdir -p "${BSTOOL%/*}"
+    ( cd "$src" && go build -o "$BSTOOL" . ) || { err "failed to build $src"; return 1; }
+  fi
+  BOOTSTRAP_DIR="$BOOTSTRAP_DIR" CONFIG_DIR="$CONFIG_DIR" "$BSTOOL" "$@"
+}
+
+# The Go tool checks its own PATH list against zsh's $path. Print it from here so
+# lib.sh stays the only place that list is written down.
+print_path_contract() {
+  printf '%s\n' "${PATH_WANT[@]}"
+}
+
+# ----------------------------------------------------------------------------
+# CLI
+# ----------------------------------------------------------------------------
+usage() {
+  cat <<'EOF'
+Usage: bs.sh [COMMAND] [OPTIONS]
+
+Commands
+  install        (default) run every step, in order. Idempotent.
+  update        bump every pinned version in the manifests
+  doctor        report where this machine differs from the manifests
+  list          list the steps
+
+Options
+  --only ID,…    run only these steps (prefix match: --only tool:)
+  --skip ID,…    skip these steps
+  --dry-run      print what would change, change nothing
+  --no-sudo      skip the steps that need root
+  --arch ARCH    override architecture detection (testing)
+
+  doctor and update take their own options; try `bs.sh update --help`.
+  -h, --help     this text
+
+Examples
+  bs.sh                       set up or repair the machine
+  bs.sh --only tool:          reinstall the pinned binaries
+  bs.sh update --check        is anything behind upstream?
+  bs.sh doctor
+EOF
+}
 
 main() {
-  local steps=()
-  if [ "$#" -gt 0 ]; then
-    steps=("$@")
-  else
-    steps=("${ALL_STEPS[@]}")
+  local cmd=install
+  case "${1:-}" in
+    install|update|doctor|list) cmd=$1; shift ;;
+    # Undocumented, for the Go tool: see print_path_contract above.
+    --print-path-contract) path_init; print_path_contract; exit 0 ;;
+    -h|--help) usage; exit 0 ;;
+  esac
+
+  # doctor and update are the Go tool's; hand the arguments straight over rather
+  # than parsing them twice with two notions of what is valid. path_init first:
+  # the tool resolves binaries with the PATH it inherits, so without it doctor
+  # reports tools missing that a real shell would find.
+  if [ "$cmd" = doctor ] || [ "$cmd" = update ]; then
+    path_init
+    bstool "$cmd" "$@"
+    exit $?
   fi
 
-  setup_prepare  # always prepare PATH/dirs first
-
-  local failed=() step
-  for step in "${steps[@]}"; do
-    [ "$step" = "setup_prepare" ] && continue
-    if ! "$step"; then
-      failed+=("$step")
-    fi
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --only)     ONLY="${2:?--only needs a value}"; shift 2 ;;
+      --only=*)   ONLY="${1#*=}"; shift ;;
+      --skip)     SKIP_LIST="${2:?--skip needs a value}"; shift 2 ;;
+      --skip=*)   SKIP_LIST="${1#*=}"; shift ;;
+      --arch)     ARCH_OVERRIDE="${2:?--arch needs a value}"; shift 2 ;;
+      --arch=*)   ARCH_OVERRIDE="${1#*=}"; shift ;;
+      --dry-run)  DRY_RUN=1; shift ;;
+      --no-sudo)  NO_SUDO=1; shift ;;
+      -h|--help)  usage; exit 0 ;;
+      -*)         err "unknown option: $1"; usage; exit 2 ;;
+      # A bare word here is most likely the old `bs.sh install_eza` convention,
+      # which --only replaced.
+      *)          err "unexpected argument: $1 (did you mean --only $1 ?)"; exit 2 ;;
+    esac
   done
 
-  echo
-  info "Bootstrap complete"
-  if [ "${#failed[@]}" -gt 0 ]; then
-    warn "failed steps: ${failed[*]}"
-  fi
+  export ARCH_OVERRIDE DRY_RUN
+  arch_init
+  arch_ok || warn "unrecognised architecture $ARCH_RAW: steps needing prebuilt binaries will skip"
+  path_init
+  load_steps
 
-  cat <<'EOF'
-
---- Next steps ----------------------------------------------------------
-  * Log in again, or run `exec zsh`, to load the new configuration.
-  * Ensure these are on PATH (handled by ~/.config/zsh):
-      $HOME/.local/bin
-      $HOME/.local/share/bob/nvim-bin   (Neovim managed by bob)
-      $HOME/.pixi/bin                   (pixi)
-      $HOME/.cargo/bin                  (rust)
-  * Open `nvim` once: lazy.nvim, Mason LSPs/formatters and Treesitter
-    parsers install on first launch (node is required and now installed).
-  * For private repos, authenticate first with `gh auth login`.
-  * WSL: also install Cica on the Windows side and select it as the
-    terminal font (Linux-side fonts are not used by Windows terminals).
-------------------------------------------------------------------------
-EOF
+  case "$cmd" in
+    install) sudo_init; cmd_install ;;
+    update)  cmd_update ;;
+    doctor)  cmd_doctor ;;
+    list)    cmd_list ;;
+  esac
 }
 
 main "$@"
