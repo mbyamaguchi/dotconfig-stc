@@ -207,6 +207,12 @@ node_globals_deduplicate() {
 }
 
 step_node_globals() {
+  # A dry run installed no pnpm, so there is nothing to check and nothing to do.
+  # Say what would happen instead of failing on an absence we created.
+  if [ "${DRY_RUN:-0}" = 1 ]; then
+    dry "pnpm add -g ${NODE_GLOBALS[*]}   # whichever are missing or under \$NVM_DIR"
+    return 0
+  fi
   has pnpm || { err "pnpm missing; cannot install the editor's node tools"; return 1; }
   local want=() g bin where
   for g in "${NODE_GLOBALS[@]}"; do
