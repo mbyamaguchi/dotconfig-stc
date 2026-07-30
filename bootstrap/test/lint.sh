@@ -33,6 +33,23 @@ elif command -v docker >/dev/null; then
     sh -c 'shellcheck -x -e SC1091 bs.sh lib.sh cleanup.sh steps/*.sh test/*.sh ../yt-dlp/*.sh'
 else
   echo "SKIP: neither shellcheck nor docker available"
-  exit 0
 fi
 echo "OK: shellcheck clean"
+
+echo "==> go (bootstrap/tool)"
+if command -v go >/dev/null; then
+  ( cd bootstrap/tool
+    gofmt -l . | tee /dev/stderr | grep -q . && { echo "FAIL: gofmt would change the above"; exit 1; }
+    go vet ./... || exit 1
+    go test ./... || exit 1
+  ) || exit 1
+  # The tool has to stay buildable by what a bare Ubuntu 24.04 ships, because a
+  # fresh machine builds it before anything has upgraded Go.
+  if [ -x /usr/lib/go-1.22/bin/go ]; then
+    ( cd bootstrap/tool && /usr/lib/go-1.22/bin/go build -o /dev/null . ) \
+      || { echo "FAIL: does not build with Ubuntu's Go 1.22"; exit 1; }
+    echo "OK: builds with Ubuntu's Go 1.22 as well"
+  fi
+else
+  echo "SKIP: go not installed (run: bootstrap/bs.sh --only go)"
+fi

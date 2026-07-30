@@ -37,14 +37,6 @@ step_rust() {
   run rustup component add rustfmt clippy
 }
 
-check_rust() {
-  local id="$1" min; min=$(rt_min rust)
-  if ! has cargo; then say "$id" WARN "not installed"; return 0; fi
-  local cur; cur=$(version_of cargo)
-  if ver_ge "$cur" "$min"; then say "$id" OK "$cur (tracks stable, min $min)"
-  else say "$id" WARN "$cur is below the required $min"; fi
-}
-
 # ----------------------------------------------------------------------------
 # Go
 # ----------------------------------------------------------------------------
@@ -81,19 +73,6 @@ step_go() {
   ln -sf "$GO_ROOT/bin/gofmt" "$LOCAL_BIN/gofmt"
   hash -r 2>/dev/null || true
   info "go is now $(version_of go)"
-}
-
-check_go() {
-  local id="$1" ref cur where
-  ref=$(rt_ref go)
-  if ! has go; then say "$id" WARN "not installed (pinned $ref)"; return 0; fi
-  cur=$(version_of go); where=$(command -v go)
-  case "$where" in
-    "$LOCAL_BIN"/*|"$GO_ROOT"/*) ;;
-    *) say "$id" WARN "$cur from $where (apt golang is EOL); pinned $ref"; return 0 ;;
-  esac
-  if [ "$cur" = "$ref" ]; then say "$id" OK "$cur"
-  else say "$id" WARN "pinned $ref, installed $cur"; fi
 }
 
 # ----------------------------------------------------------------------------
@@ -139,23 +118,6 @@ step_node() {
   # literally and globs versions/node/v<it>*.
   nvm alias default "$ref" >/dev/null || return 1
   info "node $(node -v), default alias -> $(cat "$NVM_DIR/alias/default")"
-}
-
-check_node() {
-  local id="$1" ref cur alias_
-  ref=$(rt_ref node)
-  if ! has node; then say "$id" WARN "not installed (pinned $ref)"; return 0; fi
-  cur=$(version_of node)
-  alias_=$(cat "$NVM_DIR/alias/default" 2>/dev/null)
-  if [ "$cur" != "$ref" ]; then
-    say "$id" WARN "pinned $ref, active $cur"
-  elif [ "$alias_" != "$ref" ]; then
-    # This is the failure mode that breaks silently: .zshenv globs for the alias,
-    # so a stale alias means new shells get a different node than this one.
-    say "$id" WARN "$cur active, but nvm default alias is '$alias_' -- new shells may differ"
-  else
-    say "$id" OK "$cur (nvm default)"
-  fi
 }
 
 # ----------------------------------------------------------------------------
@@ -286,29 +248,7 @@ step_node_globals() {
   fi
 }
 
-check_pnpm() {
-  local id="$1" ref; ref=$(rt_ref pnpm)
-  if has pnpm; then
-    local cur; cur=$(version_of pnpm)
-    if [ "$cur" = "$ref" ]; then say "$id" OK "$cur"; else say "$id" WARN "pinned $ref, installed $cur"; fi
-  else
-    say "$id" WARN "not installed"
-  fi
-  local g bin where missing=""
-  for g in "${NODE_GLOBALS[@]}"; do
-    bin=$(node_global_bin "$g")
-    if ! has "$bin"; then missing+=" $bin"; continue; fi
-    where=$(command -v "$bin")
-    case "$where" in
-      "$NVM_DIR"/*) say "node:$bin" WARN "installed under a single node version ($where); bumping node loses it" ;;
-      *) say "node:$bin" OK "$where" ;;
-    esac
-  done
-  [ -n "$missing" ] && say node:tools WARN "missing:$missing (conform.nvim / nvim-lint need these)"
-  return 0
-}
-
-register rust  no "Rust toolchain via rustup (tracks stable)"        step_rust  check_rust
-register go    no "Go from the pinned upstream tarball"              step_go    check_go
-register node  no "Node via nvm, with the default alias pinned"      step_node  check_node
-register pnpm  no "pnpm, plus prettier/eslint_d for the editor"      step_pnpm  check_pnpm
+register rust  no "Rust toolchain via rustup (tracks stable)"        step_rust
+register go    no "Go from the pinned upstream tarball"              step_go
+register node  no "Node via nvm, with the default alias pinned"      step_node
+register pnpm  no "pnpm, plus prettier/eslint_d for the editor"      step_pnpm

@@ -14,6 +14,8 @@
 !bootstrap/steps/*
 !bootstrap/test/
 !bootstrap/test/*
+!bootstrap/tool/
+!bootstrap/tool/*
 
 # zsh
 !zsh/

@@ -30,15 +30,16 @@ BOOTSTRAP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # Step registry
 # ----------------------------------------------------------------------------
 declare -a STEP_IDS=()
-declare -A STEP_DESC=() STEP_ROOT=() STEP_RUN=() STEP_CHECK=()
+declare -A STEP_DESC=() STEP_ROOT=() STEP_RUN=()
 
-# register <id> <needs_root: yes|no> <description> <run_fn> [check_fn]
+# register <id> <needs_root: yes|no> <description> <run_fn>
+# Verification lives in bootstrap/tool, not next to the step -- see the doctor
+# section below for why.
 register() {
   STEP_IDS+=("$1")
   STEP_ROOT["$1"]="$2"
   STEP_DESC["$1"]="$3"
   STEP_RUN["$1"]="$4"
-  STEP_CHECK["$1"]="${5:-}"
 }
 
 load_steps() {
@@ -53,7 +54,7 @@ load_steps() {
 # ----------------------------------------------------------------------------
 # Selection
 # ----------------------------------------------------------------------------
-ONLY="" SKIP_LIST="" DRY_RUN=0 NO_SUDO=0 ARCH_OVERRIDE="" UPDATE_CHECK=0
+ONLY="" SKIP_LIST="" DRY_RUN=0 NO_SUDO=0 ARCH_OVERRIDE=""
 
 # --only/--skip match on a prefix, so `--only tool:` selects every tool and
 # `--only tool:eza` selects one.
@@ -220,234 +221,41 @@ cmd_list() {
 }
 
 # ----------------------------------------------------------------------------
-# doctor
+# doctor / update -- delegated to bootstrap/tool
 # ----------------------------------------------------------------------------
-DOCTOR_BAD=0
+# These two are the parts with real logic: HTTP, JSON and version algebra, which
+# is also where the shell version had its actual bugs (0.9.3 comparing above
+# 0.10.0; tags with and without a v prefix). They live in Go so `go test` can pin
+# that behaviour down.
+#
+# They are deliberately kept out of the install path: a bare machine has no Go
+# until `bs.sh` has installed it, and neither doctor nor update is needed before
+# then -- nothing can be behind upstream on day one.
+#
+# The binary is built on first use and cached outside the repository. It is never
+# committed: it would be per-architecture, impossible to verify by reading, and
+# stale the moment a .go file changed.
+BSTOOL="${XDG_CACHE_HOME:-$HOME/.cache}/dotconfig/bstool"
 
-cmd_doctor() {
-  printf '%-22s %-5s %s\n' ID STATUS DETAIL
-  printf '%-22s %-5s %s\n' '---' '-----' '------'
-  local id fn
-  for id in "${STEP_IDS[@]}"; do
-    selected "$id" || continue
-    fn="${STEP_CHECK[$id]}"
-    [ -n "$fn" ] || continue
-    "$fn" "$id"
-  done
-  doctor_extra
-  printf '\n'
-  if [ "$DOCTOR_BAD" = 1 ]; then
-    warn "differences found -- run bs.sh to reconcile"
-    return 1
-  fi
-  ok "machine matches the manifests"
-}
-
-# say <id> <OK|WARN|FAIL|INFO> <detail...>
-say() {
-  local id="$1" status="$2"; shift 2
-  local c
-  case "$status" in
-    OK)   c=$_C_OK ;;
-    WARN) c=$_C_WARN; DOCTOR_BAD=1 ;;
-    FAIL) c=$_C_ERR;  DOCTOR_BAD=1 ;;
-    *)    c=$_C_DIM ;;
-  esac
-  printf '%-22s %s%-5s%s %s\n' "$id" "$c" "$status" "$_C_OFF" "$*"
-}
-
-# Checks that belong to no single step.
-doctor_extra() {
-  # lib.sh's path_init() is a hand-kept copy of the `path=(...)` list in
-  # zsh/.zshenv, and the two can rot apart. What actually breaks when they do is
-  # bootstrap installing a tool into a directory the shell never looks at, so
-  # assert exactly that: every directory bootstrap uses must be on zsh's $path.
-  # (Not set equality -- zsh's $path legitimately has more, inherited from
-  # /etc/profile and friends.)
-  if has zsh; then
-    local zpath d missing=""
-    zpath=$(zsh -c 'print -rl -- $path' 2>/dev/null)
-    for d in "${PATH_WANT[@]}"; do
-      [ -d "$d" ] || continue
-      printf '%s\n' "$zpath" | grep -qxF "$d" || missing+=" $d"
-    done
-    if [ -z "$missing" ]; then
-      say path OK "all ${#PATH_WANT[@]} bootstrap dirs are on zsh \$path"
-    else
-      say path WARN "missing from zsh \$path (add to zsh/.zshenv):$missing"
+bstool() {
+  local src="$BOOTSTRAP_DIR/tool"
+  if [ ! -x "$BSTOOL" ] || [ -n "$(find "$src" -name '*.go' -newer "$BSTOOL" -print -quit 2>/dev/null)" ]; then
+    if ! has go; then
+      err "doctor and update need Go, which bs.sh itself installs."
+      err "Run: $BOOTSTRAP_DIR/bs.sh --only go"
+      return 1
     fi
+    info "building the doctor/update tool"
+    mkdir -p "${BSTOOL%/*}"
+    ( cd "$src" && go build -o "$BSTOOL" . ) || { err "failed to build $src"; return 1; }
   fi
-
-  # A lockfile with uncommitted changes means the machine has drifted ahead of
-  # what a fresh install would get.
-  if [ -f "$CONFIG_DIR/nvim/lazy-lock.json" ]; then
-    if git -C "$CONFIG_DIR" diff --quiet -- nvim/lazy-lock.json 2>/dev/null; then
-      say nvim:lock OK "committed"
-    else
-      say nvim:lock WARN "uncommitted plugin updates -- commit nvim/lazy-lock.json"
-    fi
-  fi
-
-  # ~/.gitconfig is read after ~/.config/git/config and wins, so anything in it
-  # is invisible to this repo and absent on a fresh machine.
-  if [ -f "$HOME/.gitconfig" ]; then
-    # shellcheck disable=SC2088  # a message, not a path to expand
-    say git:home WARN "~/.gitconfig shadows git/config -- fold it into git/config.local"
-  else
-    say git:home OK "no ~/.gitconfig shadowing the XDG config"
-  fi
-
-  if is_wsl; then
-    local n
-    n=$(zsh -c 'print -rl -- $path' 2>/dev/null | grep -c '^/mnt/' || true)
-    say wsl INFO "$n Windows PATH entries kept (pruned in zsh/.zshenv)"
-  fi
+  BOOTSTRAP_DIR="$BOOTSTRAP_DIR" CONFIG_DIR="$CONFIG_DIR" "$BSTOOL" "$@"
 }
 
-# ----------------------------------------------------------------------------
-# update -- bump the pins
-# ----------------------------------------------------------------------------
-# Rewrite one field of one row, by column number. awk into a temp file and move
-# it, never sed -i: a stray substitution in a TSV silently corrupts a column.
-tsv_set() {
-  local file="$BOOTSTRAP_DIR/$1" key="$2" col="$3" val="$4" tmp
-  tmp="$(mktemp)"
-  awk -F'\t' -v OFS='\t' -v k="$key" -v c="$col" -v v="$val" \
-    '!/^#/ && NF && $1 == k { $c = v } { print }' "$file" >"$tmp" \
-    && mv "$tmp" "$file"
-}
-
-UPDATE_CHANGES=0
-
-# bump <label> <file> <key> <col> <current> <latest>
-bump() {
-  local label="$1" file="$2" key="$3" col="$4" cur="$5" new="$6"
-  if [ -z "$new" ]; then
-    warn "$label: could not resolve the latest version"
-    return 0
-  fi
-  if [ "$cur" = "$new" ]; then
-    skip "$label $cur"
-    return 0
-  fi
-  UPDATE_CHANGES=1
-  printf '%s  ->%s %-12s %s -> %s\n' "$_C_INFO" "$_C_OFF" "$label" "$cur" "$new"
-  [ "$UPDATE_CHECK" = 1 ] && return 0
-  tsv_set "$file" "$key" "$col" "$new"
-}
-
-update_tools() {
-  local name ref min repo asset install new
-  # min/asset/install are read to consume the columns; only ref and repo matter.
-  # shellcheck disable=SC2034
-  while IFS=$'\t' read -r name ref min repo asset install; do
-    case "$name" in ''|'#'*) continue ;; esac
-    [ -n "$ONLY" ] && ! _matches "$name" "$ONLY" && continue
-    [ "$ref" = latest ] && { skip "$name latest (floats by design)"; continue; }
-    new=$(latest_tag "$repo")
-    bump "$name" tools.tsv "$name" 2 "$ref" "$new"
-  done < <(grep -v '^#' "$BOOTSTRAP_DIR/tools.tsv" | grep -v '^$')
-}
-
-update_runtimes() {
-  local cur new
-
-  if [ -z "$ONLY" ] || _matches nvim "$ONLY"; then
-    cur=$(manifest_field runtimes.tsv nvim 2)
-    bump nvim runtimes.tsv nvim 2 "$cur" "$(latest_tag neovim/neovim)"
-  fi
-
-  if [ -z "$ONLY" ] || _matches node "$ONLY"; then
-    cur=$(manifest_field runtimes.tsv node 2)
-    # Highest LTS from the official index; jq keeps this to one request.
-    new=$(curl "${CURL_OPTS[@]}" https://nodejs.org/dist/index.json 2>/dev/null \
-          | jq -r '[.[] | select(.lts != false)] | .[0].version' 2>/dev/null)
-    bump node runtimes.tsv node 2 "$cur" "${new#v}"
-  fi
-
-  if [ -z "$ONLY" ] || _matches pnpm "$ONLY"; then
-    cur=$(manifest_field runtimes.tsv pnpm 2)
-    new=$(curl "${CURL_OPTS[@]}" https://registry.npmjs.org/pnpm 2>/dev/null \
-          | jq -r '.["dist-tags"].latest' 2>/dev/null)
-    bump pnpm runtimes.tsv pnpm 2 "$cur" "$new"
-  fi
-
-  if [ -z "$ONLY" ] || _matches go "$ONLY"; then
-    cur=$(manifest_field runtimes.tsv go 2)
-    new=$(curl "${CURL_OPTS[@]}" 'https://go.dev/VERSION?m=text' 2>/dev/null | head -n1)
-    bump go runtimes.tsv go 2 "$cur" "${new#go}"
-  fi
-
-  # rust is `stable` on purpose (see runtimes.tsv), so there is nothing to bump.
-}
-
-# sheldon has no lockfile that records revisions, so the pins live in
-# plugins.toml and this is the only way to refresh them.
-update_sheldon() {
-  local toml="$CONFIG_DIR/sheldon/plugins.toml" repo cur new tmp
-  [ -r "$toml" ] || return 0
-  [ -z "$ONLY" ] || _matches sheldon "$ONLY" || return 0
-
-  while read -r repo; do
-    cur=$(awk -v r="$repo" '
-      $0 ~ "github = ." r "." { found = 1; next }
-      found && /^rev = / { gsub(/[",]/, "", $3); print $3; exit }
-      found && /^\[/ { exit }' "$toml")
-    new=$(git ls-remote "https://github.com/$repo" HEAD 2>/dev/null | awk '{print $1}')
-    if [ -z "$new" ]; then warn "sheldon/$repo: could not reach the remote"; continue; fi
-    if [ "$cur" = "$new" ]; then skip "sheldon/${repo##*/} ${cur:0:8}"; continue; fi
-    UPDATE_CHANGES=1
-    printf '%s  ->%s %-12s %s -> %s\n' "$_C_INFO" "$_C_OFF" "${repo##*/}" "${cur:0:8}" "${new:0:8}"
-    [ "$UPDATE_CHECK" = 1 ] && continue
-    tmp="$(mktemp)"
-    awk -v old="$cur" -v new="$new" '{ gsub(old, new); print }' "$toml" >"$tmp" && mv "$tmp" "$toml"
-  done < <(grep -oE "^github = ['\"][^'\"]+" "$toml" | sed "s/.*['\"]//")
-}
-
-# lazy.nvim owns its own lockfile; ask it to update and let the diff show up in
-# nvim/lazy-lock.json.
-update_nvim_plugins() {
-  [ -z "$ONLY" ] || _matches plugins "$ONLY" || return 0
-  has nvim || { skip "nvim not installed; skipping plugin update"; return 0; }
-  if [ "$UPDATE_CHECK" = 1 ]; then
-    skip "nvim plugins (run without --check to update lazy-lock.json)"
-    return 0
-  fi
-  info "updating nvim plugins (lazy-lock.json)"
-  nvim --headless '+Lazy! update' +qa 2>/dev/null || warn "nvim plugin update failed"
-  if git -C "$CONFIG_DIR" diff --quiet -- nvim/lazy-lock.json 2>/dev/null; then
-    skip "lazy-lock.json unchanged"
-  else
-    UPDATE_CHANGES=1
-    info "lazy-lock.json updated"
-  fi
-}
-
-cmd_update() {
-  has jq || warn "jq is missing; some lookups will be skipped (bs.sh --only apt installs it)"
-  head_ "Resolving latest versions"
-  update_tools
-  update_runtimes
-  update_sheldon
-  update_nvim_plugins
-
-  printf '\n'
-  if [ "$UPDATE_CHANGES" = 0 ]; then
-    ok "everything is already at the latest version"
-    return 0
-  fi
-  if [ "$UPDATE_CHECK" = 1 ]; then
-    warn "updates are available (run without --check to write them)"
-    return 1
-  fi
-  head_ "Updated"
-  cat <<EOF
-  Review and commit, then apply:
-
-      git -C $CONFIG_DIR diff
-      git -C $CONFIG_DIR commit -am 'Bump pins'
-      $BOOTSTRAP_DIR/bs.sh
-EOF
+# The Go tool checks its own PATH list against zsh's $path. Print it from here so
+# lib.sh stays the only place that list is written down.
+print_path_contract() {
+  printf '%s\n' "${PATH_WANT[@]}"
 }
 
 # ----------------------------------------------------------------------------
@@ -468,8 +276,9 @@ Options
   --skip ID,…    skip these steps
   --dry-run      print what would change, change nothing
   --no-sudo      skip the steps that need root
-  --check        update only: report what is behind, write nothing
   --arch ARCH    override architecture detection (testing)
+
+  doctor and update take their own options; try `bs.sh update --help`.
   -h, --help     this text
 
 Examples
@@ -484,8 +293,20 @@ main() {
   local cmd=install
   case "${1:-}" in
     install|update|doctor|list) cmd=$1; shift ;;
+    # Undocumented, for the Go tool: see print_path_contract above.
+    --print-path-contract) path_init; print_path_contract; exit 0 ;;
     -h|--help) usage; exit 0 ;;
   esac
+
+  # doctor and update are the Go tool's; hand the arguments straight over rather
+  # than parsing them twice with two notions of what is valid. path_init first:
+  # the tool resolves binaries with the PATH it inherits, so without it doctor
+  # reports tools missing that a real shell would find.
+  if [ "$cmd" = doctor ] || [ "$cmd" = update ]; then
+    path_init
+    bstool "$cmd" "$@"
+    exit $?
+  fi
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -497,19 +318,11 @@ main() {
       --arch=*)   ARCH_OVERRIDE="${1#*=}"; shift ;;
       --dry-run)  DRY_RUN=1; shift ;;
       --no-sudo)  NO_SUDO=1; shift ;;
-      --check)    UPDATE_CHECK=1; shift ;;
       -h|--help)  usage; exit 0 ;;
       -*)         err "unknown option: $1"; usage; exit 2 ;;
-      # `bs.sh update starship` is the natural way to bump one thing, so for
-      # update a bare word is the filter. Elsewhere it is most likely the old
-      # `bs.sh install_eza` calling convention, which --only replaced.
-      *)
-        if [ "$cmd" = update ]; then
-          ONLY="${ONLY:+$ONLY,}$1"; shift
-        else
-          err "unexpected argument: $1 (did you mean --only $1 ?)"; exit 2
-        fi
-        ;;
+      # A bare word here is most likely the old `bs.sh install_eza` convention,
+      # which --only replaced.
+      *)          err "unexpected argument: $1 (did you mean --only $1 ?)"; exit 2 ;;
     esac
   done
 

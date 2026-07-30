@@ -65,18 +65,4 @@ apt_group_locales() {
   apt_refresh && DEBIAN_FRONTEND=noninteractive run_sudo apt-get install -y locales
 }
 
-check_locale() {
-  local id="$1" l missing=""
-  for l in "${LOCALES[@]}"; do locale_present "$l" || missing+=" $l"; done
-  if [ -n "$missing" ] && [ ! -d "$USER_LOCALE_DIR" ]; then
-    say "$id" FAIL "missing:$missing -- every subprocess will warn about LC_CTYPE"
-  elif [ -n "$missing" ]; then
-    say "$id" OK "via LOCPATH=$USER_LOCALE_DIR"
-  elif [ -d "$USER_LOCALE_DIR" ]; then
-    say "$id" WARN "system locales exist but $USER_LOCALE_DIR also does; LOCPATH will mask them"
-  else
-    say "$id" OK "${LOCALES[*]} system-wide"
-  fi
-}
-
-register locale yes "generate the ja_JP/en_US locales zsh/.zshenv expects" step_locale check_locale
+register locale yes "generate the ja_JP/en_US locales zsh/.zshenv expects" step_locale

@@ -46,15 +46,41 @@ leaves the result as a reviewable diff.
 ## Layout
 
 ```
-bs.sh          the driver: argument parsing, step dispatch, doctor, update
+bs.sh          the driver: argument parsing, step dispatch, install
 lib.sh         everything the steps share (logging, versions, downloads, PATH)
 tools.tsv      prebuilt binaries from GitHub releases -> ~/.local/bin
 apt.tsv        apt package set, by group
 runtimes.tsv   nvim / node / pnpm / go / rust, each via its own manager
 steps/*.sh     one file per concern, run in filename order
+tool/          doctor and update, in Go (see below)
 cleanup.sh     retire files that are no longer read (opt-in, moves not deletes)
-test/          run the whole thing in a clean ubuntu:24.04 container
+test/          lint.sh, and the whole thing in a clean ubuntu:24.04 container
 ```
+
+### Why two languages
+
+`install` is shell because it is almost entirely process orchestration — there
+are over a hundred places this shells out to apt, curl, tar, git or nvim, and in
+Go each of those becomes `exec.Command` plus error handling. More importantly, a
+bootstrap cannot require the toolchain it installs: this repository has no CI and
+does not push, so a Go binary would have to be built on the fresh machine, by the
+EOL Go 1.22 that `runtimes.tsv` exists to replace.
+
+`doctor` and `update` are the opposite: HTTP, JSON, and version comparison. That
+is where the shell version's real bugs lived — `0.9.3` comparing above `0.10.0`,
+tags with and without a `v` prefix, asset names expanding wrong — so they are in
+Go where `go test` can pin the behaviour down. Neither is needed on a fresh
+machine (nothing is behind upstream on day one), so by the time you run them
+`bs.sh` has installed Go.
+
+`bs.sh doctor` and `bs.sh update` build `tool/` on first use and cache the binary
+in `$XDG_CACHE_HOME/dotconfig/`, rebuilding when a `.go` file changes. The binary
+is never committed: it would be per-architecture and unverifiable by reading. The
+package has **no dependencies**, so the build needs no network and no `go.sum`.
+
+The cost of this split is that a step's install lives in `steps/*.sh` while its
+verification lives in `tool/doctor.go`. Manifest-driven rows are unaffected —
+`tools.tsv` still generates both — but the eight bespoke steps now have two homes.
 
 ### Adding a tool
 
@@ -113,11 +139,16 @@ finish the job later. The locale step also has a rootless path: it compiles into
 ## Testing
 
 ```sh
-shellcheck -x bootstrap/bs.sh bootstrap/lib.sh bootstrap/steps/*.sh bootstrap/cleanup.sh
+bootstrap/test/lint.sh             # bash -n, shellcheck, gofmt, go vet, go test
 bs.sh --dry-run                    # prints every mutation, performs none
 bs.sh --dry-run --arch riscv64     # unsupported arch must skip, not fail
 bootstrap/test/container.sh        # the real one; --fast skips the nvim plugins
 ```
+
+`lint.sh` falls back to shellcheck's container image when shellcheck is not
+installed yet, which is exactly when you most want to run it. It also checks the
+Go tool still builds with `/usr/lib/go-1.22/bin/go` — Ubuntu 24.04's Go — since
+that is what a fresh machine has.
 
 `container.sh` pipes `git archive HEAD` into a clean `ubuntu:24.04` with a
 sudo-capable non-root user, runs the bootstrap, and then checks that a second run

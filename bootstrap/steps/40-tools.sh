@@ -98,55 +98,9 @@ tool_install_font() {
   fc-cache -f "$FONT_DIR" >/dev/null 2>&1 || warn "fc-cache failed; fonts may not be visible yet"
   info "$(find "$FONT_DIR" -name "$pattern*.ttf" | wc -l) $pattern faces in $FONT_DIR"
 }
-
-tool_check() {
-  local id="$1" name="${1#tool:}" row ref min install probe cur where
-  row=$(manifest_row tools.tsv "$name")
-  IFS=$'\t' read -r name ref min _repo _asset install <<<"$row"
-
-  if [ "$install" = font ]; then
-    local pattern
-    pattern=$(printf '%s' "$name" | sed 's/^./\U&/')
-    if compgen -G "$FONT_DIR/$pattern*.ttf" >/dev/null 2>&1; then
-      say "$id" OK "$pattern installed ($ref pinned)"
-    else
-      say "$id" WARN "$pattern font missing"
-    fi
-    return 0
-  fi
-
-  probe="${install#bin:}"; probe="${probe%%,*}"
-  if ! has "$probe"; then
-    say "$id" WARN "not installed (pinned $ref)"
-    return 0
-  fi
-  cur=$(version_of "$probe")
-  where=$(command -v "$probe")
-
-  # Naming the directory matters: a copy outside ~/.local/bin means something
-  # else -- usually an apt package -- is standing in for the pinned one, which is
-  # how this machine drifted from what a fresh install would produce.
-  case "$where" in
-    "$LOCAL_BIN"/*) ;;
-    *) say "$id" WARN "$cur from $where, not the pinned copy in ~/.local/bin"; return 0 ;;
-  esac
-
-  if [ "$ref" = latest ]; then
-    if [ "$min" = - ] || ver_ge "$cur" "$min"; then
-      say "$id" OK "$cur (floats; min $min)"
-    else
-      say "$id" WARN "$cur is below the required $min"
-    fi
-  elif [ "$cur" = "$(ref_version "$ref")" ]; then
-    say "$id" OK "$cur"
-  else
-    say "$id" WARN "pinned $(ref_version "$ref"), installed $cur"
-  fi
-}
-
 # Register one step per row.
 _register_tool() {
   local name="$1" ref="$2"
-  register "tool:$name" no "install $name $ref" "tool_install $name" "tool_check"
+  register "tool:$name" no "install $name $ref" "tool_install $name"
 }
 manifest_each tools.tsv _register_tool

@@ -38,15 +38,4 @@ sudo_grep_zdotdir() {
   ${SUDO_CMD:+$SUDO_CMD} grep -q 'ZDOTDIR' "$ZSHENV_SYSTEM" 2>/dev/null
 }
 
-check_zdotdir() {
-  local id="$1"
-  if [ "${ZDOTDIR:-}" = "$CONFIG_DIR/zsh" ]; then
-    say "$id" OK "$ZSHENV_SYSTEM -> $ZDOTDIR"
-  elif grep -q 'ZDOTDIR' "$ZSHENV_SYSTEM" 2>/dev/null; then
-    say "$id" OK "set in $ZSHENV_SYSTEM"
-  else
-    say "$id" FAIL "not set -- zsh will read ~/.zshrc instead of zsh/.zshrc"
-  fi
-}
-
-register zdotdir yes "point zsh at ~/.config/zsh via /etc/zsh/zshenv" step_zdotdir check_zdotdir
+register zdotdir yes "point zsh at ~/.config/zsh via /etc/zsh/zshenv" step_zdotdir

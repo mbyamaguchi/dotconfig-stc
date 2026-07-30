@@ -34,21 +34,4 @@ step_git_local() {
   fi
 }
 
-check_git_local() {
-  local id="$1"
-  if [ ! -f "$GIT_LOCAL" ]; then
-    say "$id" WARN "git/config.local missing, but git/config includes it"
-    return 0
-  fi
-  # useConfigOnly means an unset identity is a hard failure at commit time, so
-  # check that one really resolves.
-  local email
-  email=$(git -C "$CONFIG_DIR" config --get user.email 2>/dev/null)
-  if [ -n "$email" ]; then
-    say "$id" OK "identity resolves to $email"
-  else
-    say "$id" FAIL "no user.email resolves -- commits will refuse to run"
-  fi
-}
-
-register git:local no "create git/config.local from the tracked template" step_git_local check_git_local
+register git:local no "create git/config.local from the tracked template" step_git_local

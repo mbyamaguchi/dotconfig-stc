@@ -81,44 +81,7 @@ step_gh() {
   DEBIAN_FRONTEND=noninteractive run_sudo apt-get install -y gh
 }
 
-# ----------------------------------------------------------------------------
-# doctor
-# ----------------------------------------------------------------------------
-check_apt_group() {
-  local id="$1" group="${1#apt:}" pkgs p missing=0 total=0
-  pkgs=$(awk -F'\t' -v g="$group" '!/^#/ && NF && $1 == g { print $2 }' "$BOOTSTRAP_DIR/apt.tsv" \
-         | tr '\n' ' ')
-  for p in $pkgs; do
-    total=$((total + 1))
-    dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'ok installed' || missing=$((missing + 1))
-  done
-  if [ "$missing" = 0 ]; then
-    say "$id" OK "$total packages installed"
-  else
-    say "$id" WARN "$missing of $total missing"
-  fi
-}
-
-check_apt_base() {
-  check_apt_group "$1"
-  # The shims are the difference between `bat`/`fd` working and the aliases in
-  # zsh/aliases.zsh silently falling back.
-  local t
-  for t in fd bat; do
-    if has "$t"; then
-      say "shim:$t" OK "$(command -v "$t")"
-    else
-      say "shim:$t" WARN "missing -- zsh/aliases.zsh falls back to plain ls/cat"
-    fi
-  done
-}
-
-check_gh() {
-  local id="$1"
-  if has gh; then say "$id" OK "$(version_of gh)"; else say "$id" WARN "not installed"; fi
-}
-
-register apt:base  yes "base apt packages, plus the fd/bat name shims" step_apt_base  check_apt_base
-register apt:cpp   yes "C/C++ toolchain (clangd, clang-format, cmake, ...)" step_apt_cpp check_apt_group
-register apt:media yes "ffmpeg (yt-dlp needs it to merge streams)" step_apt_media check_apt_group
-register gh        yes "GitHub CLI, from its own apt repository" step_gh check_gh
+register apt:base  yes "base apt packages, plus the fd/bat name shims" step_apt_base
+register apt:cpp   yes "C/C++ toolchain (clangd, clang-format, cmake, ...)" step_apt_cpp
+register apt:media yes "ffmpeg (yt-dlp needs it to merge streams)" step_apt_media
+register gh        yes "GitHub CLI, from its own apt repository" step_gh
