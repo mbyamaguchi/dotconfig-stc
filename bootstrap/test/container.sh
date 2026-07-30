@@ -70,6 +70,16 @@ echo "--- bs.sh --dry-run --arch aarch64 (must skip, not fail) ----------------"
 "$HOME/.config/bootstrap/bs.sh" --dry-run --arch riscv64 >/dev/null \
   || { echo "FAIL: unknown arch should skip, not fail"; exit 1; }
 
+echo "--- doctor before Go exists must say so, not crash ---------------------"
+# Nothing has installed Go yet, and doctor is written in Go. The failure has to
+# name the fix rather than dying in a build error.
+if out=$("$HOME/.config/bootstrap/bs.sh" doctor 2>&1); then
+  echo "FAIL: doctor should not succeed before Go is installed"; exit 1
+fi
+printf "%s" "$out" | grep -q -- "--only go" \
+  || { echo "FAIL: doctor did not point at the fix. Got:"; printf "%s\n" "$out"; exit 1; }
+echo "OK: doctor explains it needs Go first"
+
 echo "--- bs.sh (full install) -----------------------------------------------"
 # shellcheck disable=SC2086
 "$HOME/.config/bootstrap/bs.sh" $SKIP_ARG || { echo "FAIL: install reported failures"; exit 1; }
