@@ -74,7 +74,11 @@ path_init() {
     nodebin=("$NVM_DIR/versions/node/v${want_node#v}"*/bin)
   fi
   [ -d "${nodebin[0]:-}" ] || nodebin=("$NVM_DIR"/versions/node/*/bin)
-  [ -d "${nodebin[-1]:-}" ] && want=("${nodebin[-1]}" "${want[@]}")
+  # Appended last, so the loop below prepends it last and it ends up FIRST on
+  # PATH -- matching .zshenv, which puts nvm's bin ahead of everything else. The
+  # order has to agree or `doctor` reports a different binary than the one your
+  # shell would actually run.
+  [ -d "${nodebin[-1]:-}" ] && want+=("${nodebin[-1]}")
 
   # Read by bs.sh's doctor to check this list against zsh's own $path.
   # shellcheck disable=SC2034

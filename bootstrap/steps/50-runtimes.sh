@@ -174,10 +174,17 @@ step_pnpm() {
   if has pnpm && ! needs_install pnpm "$ref" "$min"; then
     ok "pnpm $(version_of pnpm)"
   elif has corepack; then
-    # corepack ships with node and installs an exact version without a network
-    # install script.
+    # corepack ships with node, so this needs no network install script and it
+    # takes an exact version. But `install --global` only *registers* the version:
+    # the shim comes from `enable`, and without it pnpm is nowhere on PATH.
     info "installing pnpm@$ref via corepack"
     run corepack install --global "pnpm@$ref"
+    # Into $PNPM_HOME/bin rather than next to corepack, which lives inside one
+    # node version's directory -- the same trap that would have taken prettier
+    # and eslint_d with it on the next node bump.
+    run mkdir -p "$PNPM_HOME/bin"
+    run corepack enable pnpm --install-directory "$PNPM_HOME/bin"
+    path_refresh
   else
     info "installing pnpm"
     run _pnpm_install
@@ -186,36 +193,97 @@ step_pnpm() {
     path_refresh
   fi
 
-  # prettier, stylua and eslint_d are what conform.nvim and nvim-lint shell out
-  # to. On this machine they were installed with `npm -g`, which puts them inside
-  # a single node version's directory -- so bumping node made them vanish.
-  # $PNPM_HOME is version-independent and already on PATH via zsh/.zshenv.
+  # Fail rather than carry on: the node tools below need pnpm, and reporting this
+  # step as OK while they silently went missing is how the container run ended up
+  # without prettier or eslint_d.
+  if [ "${DRY_RUN:-0}" != 1 ] && ! has pnpm; then
+    err "pnpm is still not on PATH after installing it"
+    return 1
+  fi
+
+  # prettier and eslint_d are what conform.nvim and nvim-lint shell out to. On
+  # this machine they were installed with `npm -g`, which puts them inside a
+  # single node version's directory -- so bumping node made them vanish.
+  # $PNPM_HOME/bin is version-independent and on PATH via zsh/.zshenv.
   step_node_globals
 }
 
-NODE_GLOBALS=(prettier eslint_d)
+# prettier   conform.nvim's formatter for web files
+# eslint_d   nvim-lint's linter
+# tree-sitter-cli  nvim-treesitter's rewritten branch shells out to `tree-sitter
+#                  build` for every parser. Without it each build dies with
+#                  ENOENT and you get an editor with no syntax highlighting --
+#                  which is exactly what the container produced before this.
+NODE_GLOBALS=(prettier eslint_d tree-sitter-cli)
+
+# The npm package is tree-sitter-cli; the binary it installs is tree-sitter.
+node_global_bin() {
+  case "$1" in
+    tree-sitter-cli) printf 'tree-sitter' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+# Remove any `npm -g` copy of a tool we manage with pnpm. zsh/.zshenv puts nvm's
+# node bin ahead of $PNPM_HOME/bin on purpose -- that is how it gets the default
+# node without sourcing nvm.sh -- so a leftover npm -g copy keeps winning in the
+# shell you actually use, and this step would reinstall on every single run.
+node_globals_deduplicate() {
+  has npm || return 0
+  # Test the directory rather than asking npm: `npm ls -g --parseable <pkg>`
+  # exits 0 with empty output for a package that is not installed, so using it
+  # made this run `npm uninstall` on every invocation.
+  local root; root=$(npm root -g 2>/dev/null) || return 0
+  [ -d "$root" ] || return 0
+  local g dupes=()
+  for g in "${NODE_GLOBALS[@]}"; do
+    [ -d "$root/$g" ] && dupes+=("$g")
+  done
+  [ ${#dupes[@]} -gt 0 ] || return 0
+  info "removing the npm -g copies of ${dupes[*]} (pnpm owns these now)"
+  run npm uninstall -g "${dupes[@]}" >/dev/null 2>&1 || warn "npm uninstall -g reported a problem"
+}
 
 step_node_globals() {
-  has pnpm || { warn "pnpm missing; skipping the editor's node tools"; return 0; }
-  local want=() g where
+  has pnpm || { err "pnpm missing; cannot install the editor's node tools"; return 1; }
+  local want=() g bin where
   for g in "${NODE_GLOBALS[@]}"; do
-    if ! has "$g"; then
+    bin=$(node_global_bin "$g")
+    if ! has "$bin"; then
       want+=("$g")
       continue
     fi
     # Present but installed inside one node version's directory: it works today
     # and disappears the next time node is bumped, so move it.
-    where=$(command -v "$g")
+    where=$(command -v "$bin")
     case "$where" in
-      "$NVM_DIR"/*) info "$g lives in $where; reinstalling it version-independently"; want+=("$g") ;;
+      "$NVM_DIR"/*) info "$bin lives in $where; reinstalling it version-independently"; want+=("$g") ;;
     esac
   done
   if [ ${#want[@]} -eq 0 ]; then
     ok "editor node tools present: ${NODE_GLOBALS[*]}"
-    return 0
   fi
-  info "installing ${want[*]} into \$PNPM_HOME"
-  run pnpm add -g "${want[@]}"
+  if [ ${#want[@]} -gt 0 ]; then
+    info "installing ${want[*]} into \$PNPM_HOME"
+    run pnpm add -g "${want[@]}"
+  fi
+  node_globals_deduplicate
+  path_refresh
+
+  # Verify the outcome rather than assume it: the whole point is that these end
+  # up somewhere a node bump cannot take them.
+  [ "${DRY_RUN:-0}" = 1 ] && return 0
+  local bad=""
+  for g in "${NODE_GLOBALS[@]}"; do
+    bin=$(node_global_bin "$g")
+    has "$bin" || { bad+=" $bin(missing)"; continue; }
+    case "$(command -v "$bin")" in "$NVM_DIR"/*) bad+=" $bin(still under nvm)" ;; esac
+  done
+  if [ -n "$bad" ]; then
+    warn "editor node tools not version-independent:$bad"
+  else
+    ok "editor node tools are version-independent"
+  fi
 }
 
 check_pnpm() {
@@ -226,13 +294,14 @@ check_pnpm() {
   else
     say "$id" WARN "not installed"
   fi
-  local g where missing=""
+  local g bin where missing=""
   for g in "${NODE_GLOBALS[@]}"; do
-    if ! has "$g"; then missing+=" $g"; continue; fi
-    where=$(command -v "$g")
+    bin=$(node_global_bin "$g")
+    if ! has "$bin"; then missing+=" $bin"; continue; fi
+    where=$(command -v "$bin")
     case "$where" in
-      "$NVM_DIR"/*) say "node:$g" WARN "installed under a single node version ($where); bumping node loses it" ;;
-      *) say "node:$g" OK "$where" ;;
+      "$NVM_DIR"/*) say "node:$bin" WARN "installed under a single node version ($where); bumping node loses it" ;;
+      *) say "node:$bin" OK "$where" ;;
     esac
   done
   [ -n "$missing" ] && say node:tools WARN "missing:$missing (conform.nvim / nvim-lint need these)"

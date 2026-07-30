@@ -90,6 +90,21 @@ check_nvim_plugins() {
     say "$id" OK "$have plugins"
   fi
 
+  # Counting plugin directories is not enough: parsers are built by shelling out
+  # to `tree-sitter build`, and when that binary is missing every build fails
+  # while the plugin tree still looks complete. That is exactly how a container
+  # run reported OK with zero syntax highlighting.
+  local pdir="$XDG_DATA_HOME/nvim/site/parser" pwant phave
+  pwant=$(grep -cE '^\s*"' "$CONFIG_DIR/nvim/lua/config/treesitter-parsers.lua" 2>/dev/null || echo 0)
+  phave=$(find "$pdir" -maxdepth 1 -name '*.so' 2>/dev/null | wc -l)
+  if [ "$phave" = 0 ]; then
+    say nvim:parsers WARN "no treesitter parsers in $pdir (is tree-sitter on PATH?)"
+  elif [ "$pwant" -gt 0 ] && [ "$phave" -lt "$pwant" ]; then
+    say nvim:parsers WARN "$phave parsers built, $pwant requested"
+  else
+    say nvim:parsers OK "$phave parsers"
+  fi
+
   # The tools conform.nvim and nvim-lint invoke by name. Mason may provide them,
   # apt may, cargo may -- what matters is that the editor can find them.
   local t missing=""
