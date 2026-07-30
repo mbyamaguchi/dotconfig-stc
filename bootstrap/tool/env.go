@@ -112,6 +112,14 @@ func Which(bin string) string {
 	return p
 }
 
+// Runs reports whether a tool on PATH actually works, which Which cannot tell:
+// a wrapper script whose native binary was never fetched is an ordinary
+// executable file that fails on every call. Only for tools whose --version is
+// cheap and side-effect free.
+func Runs(bin string) bool {
+	return exec.Command(bin, "--version").Run() == nil
+}
+
 func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

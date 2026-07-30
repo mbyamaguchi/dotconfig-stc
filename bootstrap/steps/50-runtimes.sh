@@ -186,6 +186,15 @@ node_global_bin() {
   esac
 }
 
+# pnpm 10 stopped running dependency build scripts unless the package is
+# approved, and tree-sitter-cli's npm package is only a JS wrapper: its
+# postinstall downloads the native binary the wrapper spawns. Blocked, the
+# install still "succeeds" and leaves a shim on PATH that dies with ENOENT on
+# every call -- so `pnpm add -g tree-sitter-cli` alone produced an editor with
+# no parsers at all. --allow-build names the exception explicitly rather than
+# turning build scripts back on globally.
+PNPM_ALLOW_BUILD=(--allow-build=tree-sitter-cli)
+
 # Remove any `npm -g` copy of a tool we manage with pnpm. zsh/.zshenv puts nvm's
 # node bin ahead of $PNPM_HOME/bin on purpose -- that is how it gets the default
 # node without sourcing nvm.sh -- so a leftover npm -g copy keeps winning in the
@@ -210,7 +219,7 @@ step_node_globals() {
   # A dry run installed no pnpm, so there is nothing to check and nothing to do.
   # Say what would happen instead of failing on an absence we created.
   if [ "${DRY_RUN:-0}" = 1 ]; then
-    dry "pnpm add -g ${NODE_GLOBALS[*]}   # whichever are missing or under \$NVM_DIR"
+    dry "pnpm add -g ${PNPM_ALLOW_BUILD[*]} ${NODE_GLOBALS[*]}   # whichever are missing, broken or under \$NVM_DIR"
     return 0
   fi
   has pnpm || { err "pnpm missing; cannot install the editor's node tools"; return 1; }
@@ -218,6 +227,13 @@ step_node_globals() {
   for g in "${NODE_GLOBALS[@]}"; do
     bin=$(node_global_bin "$g")
     if ! has "$bin"; then
+      want+=("$g")
+      continue
+    fi
+    # On PATH but not runnable: an earlier install whose postinstall was blocked.
+    # Reinstalling with --allow-build is what repairs it.
+    if ! runs "$bin"; then
+      info "$bin is on PATH but does not run; reinstalling it"
       want+=("$g")
       continue
     fi
@@ -233,7 +249,7 @@ step_node_globals() {
   fi
   if [ ${#want[@]} -gt 0 ]; then
     info "installing ${want[*]} into \$PNPM_HOME"
-    run pnpm add -g "${want[@]}"
+    run pnpm add -g "${PNPM_ALLOW_BUILD[@]}" "${want[@]}"
   fi
   node_globals_deduplicate
   path_refresh
@@ -245,10 +261,11 @@ step_node_globals() {
   for g in "${NODE_GLOBALS[@]}"; do
     bin=$(node_global_bin "$g")
     has "$bin" || { bad+=" $bin(missing)"; continue; }
+    runs "$bin" || { bad+=" $bin(does not run)"; continue; }
     case "$(command -v "$bin")" in "$NVM_DIR"/*) bad+=" $bin(still under nvm)" ;; esac
   done
   if [ -n "$bad" ]; then
-    warn "editor node tools not version-independent:$bad"
+    warn "editor node tools not usable and version-independent:$bad"
   else
     ok "editor node tools are version-independent"
   fi

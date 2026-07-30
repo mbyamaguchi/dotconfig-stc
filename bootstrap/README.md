@@ -1,6 +1,7 @@
 # bootstrap
 
-**操作手順は [MANUAL.md](MANUAL.md) にあります。** このファイルは設計の記録で、
+**詳細マニュアルは [../manual/index.html](../manual/index.html)、端末用の早見表は
+[MANUAL.md](MANUAL.md) にあります。** このファイルは設計の記録で、
 なぜこうなっているかを説明するもの。
 
 Reproduce this `~/.config` on an Ubuntu machine, and keep its pinned versions
@@ -152,6 +153,15 @@ bootstrap/test/container.sh        # the real one; --fast skips the nvim plugins
 installed yet, which is exactly when you most want to run it. It also checks the
 Go tool still builds with `/usr/lib/go-1.22/bin/go` — Ubuntu 24.04's Go — since
 that is what a fresh machine has.
+
+**Presence on PATH is not health.** `has` (shell) and `Which` (Go) answer "is
+there a file", which an npm wrapper whose native binary was never fetched
+satisfies perfectly while failing on every call — that is how a container run
+produced an editor with 34 plugins and zero treesitter parsers, reported OK by
+both the install step and `doctor`. `runs` / `Runs` ask the tool to identify
+itself instead. Use them for anything installed as a wrapper around a downloaded
+binary, and prefer counting a step's output — `.so` files built — over trusting
+the exit status of a command that logs its failure and exits 0 anyway.
 
 `container.sh` pipes `git archive HEAD` into a clean `ubuntu:24.04` with a
 sudo-capable non-root user, runs the bootstrap, and then checks that a second run
