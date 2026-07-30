@@ -23,5 +23,12 @@
 	# "Inappropriate ioctl for device".
 	# gpgsign = true
 
-# Credential helpers for GitHub are not secret and do not belong here -- run
-# `gh auth setup-git` after `gh auth login` and gh writes them for you.
+# Credential helpers for GitHub are not secret, but they do belong here. Do NOT
+# run `gh auth setup-git`: with no ~/.gitconfig, git's global config *is*
+# ~/.config/git/config, which is tracked -- gh would write your machine's setup
+# into the repository. Same for any `git config --global`; use
+# `git config --file ~/.config/git/config.local ...` instead.
+#
+# [credential "https://github.com"]
+# 	helper =
+# 	helper = !/usr/bin/gh auth git-credential

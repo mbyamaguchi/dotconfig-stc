@@ -189,32 +189,30 @@ TTF をコピーしてダブルクリックでインストールし、ターミ�
 
 `reg.exe` 経由のレジストリ操作は自動化していない。
 
-### `~/.gitconfig` の整理
+### `~/.gitconfig`（このマシンでは整理済み）
 
-`~/.gitconfig` は `~/.config/git/config` より**後に読まれて勝つ**。そこにしか無いのは:
+`~/.gitconfig` は `~/.config/git/config` より**後に読まれて勝つ**。かつてそこにしか
+無かった `user.signingkey` / `commit.gpgsign` / credential helper は
+`git/config.local` へ移し、`~/.gitconfig` 自体は
+`~/.local/share/dotconfig-legacy/<日時>/` へ退避した。コミットアドレスは
+`github@mbmsky.dev` のまま変わっていない（両方に同じ値が入っていた）。
 
-- `user.signingkey`
-- `commit.gpgsign`
-- `user.email`
-
-新規マシンではこれらが再現されない。さらに現状 `git/config.local` は
-`github@mbmsky.dev` を指定しているが、`~/.gitconfig` の noreply アドレスに上書きされている。
-
-整理するなら:
+新しいマシンで同じ状態にするには、`bs.sh` が作る `config.local` に signingkey と
+`commit.gpgsign`、それに credential helper を書く。**`gh auth setup-git` は使わない**:
+`~/.gitconfig` が無いと git のグローバル設定は `~/.config/git/config`
+——つまり**追跡されているファイル**——になり、そこへ書き込まれてしまう。
 
 ```sh
-# 1. signingkey と gpgsign を config.local に書く
-$EDITOR ~/.config/git/config.local
-
-# 2. ~/.gitconfig を消す
-rm ~/.gitconfig
-
-# 3. credential helper を再生成（秘密ではないので gh が書いてよい）
-gh auth setup-git
+git config --file ~/.config/git/config.local user.signingkey <KEYID>
+git config --file ~/.config/git/config.local commit.gpgsign true
+git config --file ~/.config/git/config.local --add \
+  credential.https://github.com.helper '!/usr/bin/gh auth git-credential'
 ```
 
-**コミットに使うアドレスが変わる**ので、どちらを正とするかは判断が必要。
-`bs.sh doctor` はこの状態を `git:home` として報告し続ける。
+確認は `git config --show-origin --get user.email` で `config.local` が出ること、
+署名は捨てリポジトリで `git commit --allow-empty` して
+`git log --show-signature -1` が `Good signature` を出すこと。
+`bs.sh doctor` の `git:home` 行がこの状態を見張っている。
 
 ### 読まれていないファイルの掃除
 
