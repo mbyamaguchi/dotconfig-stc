@@ -107,6 +107,14 @@ path_refresh() {
 has() { command -v "$1" >/dev/null 2>&1; }
 need() { has "$1" || die "required command not found: $1"; }
 
+# Presence on PATH is not health. A tool installed as a wrapper script -- npm
+# packages that fetch a native binary in a postinstall are the case that bit us
+# -- is a real, executable file whether or not the binary behind it ever
+# arrived, so `has` reported working tools that died on every call. Ask the tool
+# to identify itself instead. Only use this on tools whose --version is cheap and
+# side-effect free; it runs on every bootstrap.
+runs() { has "$1" && "$1" --version >/dev/null 2>&1; }
+
 is_wsl() { grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; }
 
 # ----------------------------------------------------------------------------

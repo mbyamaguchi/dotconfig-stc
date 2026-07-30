@@ -49,6 +49,12 @@ step_nvim_plugins() {
   info "restoring plugins from lazy-lock.json (first run clones them; this is slow)"
   nvim --headless '+Lazy! restore' +qa 2>&1 | tail -3 || warn "Lazy restore reported problems"
 
+  # Check the builder before using it. `tree-sitter build` failing leaves nvim
+  # exiting 0, so the only evidence was a Node stack trace inside the output the
+  # `tail -3` below discards -- the run reported OK and the editor had no
+  # highlighting at all.
+  runs tree-sitter || warn "tree-sitter does not run; parsers will not build (fix: bs.sh --only pnpm)"
+
   # nvim-treesitter's rewritten branch has no :TSUpdateSync, and its install() is
   # asynchronous -- a headless nvim exits while parsers are still downloading. So
   # call it directly and block. The language list lives in
@@ -58,6 +64,15 @@ step_nvim_plugins() {
   nvim --headless \
     "+lua require('nvim-treesitter').install(require('config.treesitter-parsers')):wait(900000)" \
     +qa 2>&1 | tail -3 || warn "treesitter install reported problems"
+
+  # Count the result rather than trust the exit status, for the same reason.
+  local built
+  built=$(find "$XDG_DATA_HOME/nvim/site/parser" -name '*.so' 2>/dev/null | wc -l)
+  if [ "$built" -eq 0 ]; then
+    warn "no treesitter parsers were built -- run bs.sh doctor"
+  else
+    info "$built treesitter parsers built"
+  fi
 
   # mason-lspconfig's ensure_installed runs on startup, so one more launch pulls
   # the LSP servers. Their versions are NOT pinned -- Mason has no lockfile; see

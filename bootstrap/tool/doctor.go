@@ -359,12 +359,21 @@ func checkPnpm(e *Env, rp *report) {
 			missing = append(missing, bin)
 			continue
 		}
+		switch {
+		// On PATH and broken. tree-sitter-cli's npm package is a JS wrapper around
+		// a native binary its postinstall downloads, and pnpm 10 does not run build
+		// scripts for unapproved packages -- so the wrapper installs, every call
+		// dies with ENOENT, and checking the path alone passed an editor that could
+		// not build a single parser.
+		case !Runs(bin):
+			rp.add("node:"+bin, StatusWarn,
+				"%s exists but does not run (fix: bs.sh --only pnpm)", e.Tilde(where))
 		// Inside a single node version's directory it works today and vanishes
 		// on the next node bump, taking conform.nvim's formatter with it.
-		if strings.HasPrefix(where, e.NvmDir+"/") {
+		case strings.HasPrefix(where, e.NvmDir+"/"):
 			rp.add("node:"+bin, StatusWarn,
 				"installed under a single node version (%s); bumping node loses it", where)
-		} else {
+		default:
 			rp.add("node:"+bin, StatusOK, "%s", e.Tilde(where))
 		}
 	}
@@ -415,7 +424,8 @@ func checkNvim(e *Env, rp *report) {
 	wantParsers := countParserList(filepath.Join(e.ConfigDir, "nvim", "lua", "config", "treesitter-parsers.lua"))
 	switch {
 	case len(parsers) == 0:
-		rp.add("nvim:parsers", StatusWarn, "none built (is tree-sitter on PATH?)")
+		rp.add("nvim:parsers", StatusWarn,
+			"none built (check the node:tree-sitter row, then bs.sh --only nvim:plugins)")
 	case wantParsers > 0 && len(parsers) < wantParsers:
 		rp.add("nvim:parsers", StatusWarn, "%d built, %d requested", len(parsers), wantParsers)
 	default:
