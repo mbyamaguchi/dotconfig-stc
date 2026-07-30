@@ -17,6 +17,12 @@
 !bootstrap/tool/
 !bootstrap/tool/*
 
+# manual
+# The HTML manual is the detailed one; bootstrap/MANUAL.md is the terminal
+# cheatsheet. Tracked so a fresh clone can read it before anything is installed.
+!manual/
+!manual/*
+
 # zsh
 !zsh/
 !zsh/.zshenv

@@ -1,0 +1,1283 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>~/.config 詳細マニュアル</title>
+<style>
+/* ---------------------------------------------------------------------------
+   自己完結。外部リクエストは一切しない（CDN・Web フォント・外部画像なし）ので
+   file:// でもオフラインでも同じように動く。
+   --------------------------------------------------------------------------- */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f6f7f9;
+  --bg-code: #f2f3f5;
+  --fg: #1a1d21;
+  --fg-soft: #5b636e;
+  --fg-faint: #868e99;
+  --border: #dfe2e7;
+  --border-soft: #eaecf0;
+  --accent: #0b6cbf;
+  --accent-soft: #e7f0f9;
+  --ok: #1a7f45;
+  --ok-bg: #e6f4ec;
+  --warn: #9a6100;
+  --warn-bg: #fdf1dd;
+  --fail: #b3261e;
+  --fail-bg: #fbeae9;
+  --info: #4c5560;
+  --info-bg: #eef0f2;
+  --mono: ui-monospace, "Cascadia Mono", "Cica", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", "Noto Sans JP", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --sidebar: 20rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --bg-soft: #1d2025;
+    --bg-code: #22262c;
+    --fg: #e6e8eb;
+    --fg-soft: #a8b0ba;
+    --fg-faint: #7b838e;
+    --border: #32373f;
+    --border-soft: #272b31;
+    --accent: #6cb0ee;
+    --accent-soft: #1c2b3a;
+    --ok: #6bd299;
+    --ok-bg: #16281e;
+    --warn: #e0b063;
+    --warn-bg: #2b2317;
+    --fail: #f0938c;
+    --fail-bg: #2e1c1a;
+    --info: #a8b0ba;
+    --info-bg: #23262b;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.75;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* --- layout ------------------------------------------------------------- */
+.wrap { display: flex; align-items: flex-start; max-width: 96rem; margin: 0 auto; }
+
+nav {
+  position: sticky;
+  top: 0;
+  flex: 0 0 var(--sidebar);
+  width: var(--sidebar);
+  height: 100vh;
+  overflow-y: auto;
+  padding: 2rem 1rem 3rem 1.5rem;
+  border-right: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+nav .nav-title {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.25rem;
+}
+nav .nav-sub { color: var(--fg-faint); font-size: 0.75rem; margin-bottom: 1.25rem; font-family: var(--mono); }
+nav ol { list-style: none; margin: 0; padding: 0; counter-reset: sec; }
+nav ol li { counter-increment: sec; }
+nav ol > li > a::before {
+  content: counter(sec) ".";
+  color: var(--fg-faint);
+  display: inline-block;
+  width: 1.5em;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+nav a {
+  display: block;
+  padding: 0.3rem 0.5rem;
+  margin: 0.0625rem 0;
+  color: var(--fg-soft);
+  text-decoration: none;
+  border-radius: 0.375rem;
+  border-left: 2px solid transparent;
+}
+nav a:hover { background: var(--bg-soft); color: var(--fg); }
+nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+nav ul { list-style: none; margin: 0 0 0.25rem 0; padding: 0 0 0 2rem; }
+nav ul a { font-size: 0.8125rem; padding: 0.15rem 0.5rem; }
+
+main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2rem 3rem 6rem;
+}
+
+/* --- typography --------------------------------------------------------- */
+h1 {
+  font-size: 1.875rem;
+  line-height: 1.35;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+.lede { color: var(--fg-soft); margin: 0 0 2.5rem; max-width: 60ch; }
+h2 {
+  font-size: 1.375rem;
+  margin: 3.5rem 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+  scroll-margin-top: 1.5rem;
+  letter-spacing: -0.005em;
+}
+h3 {
+  font-size: 1.0625rem;
+  margin: 2.25rem 0 0.75rem;
+  scroll-margin-top: 1.5rem;
+}
+h4 { font-size: 0.9375rem; margin: 1.5rem 0 0.5rem; color: var(--fg-soft); }
+p { margin: 0.75rem 0; max-width: 78ch; }
+ul.body, ol.body { max-width: 78ch; padding-left: 1.5rem; }
+ul.body li, ol.body li { margin: 0.35rem 0; }
+strong { font-weight: 650; }
+a { color: var(--accent); }
+
+code {
+  font-family: var(--mono);
+  font-size: 0.875em;
+  background: var(--bg-code);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  word-break: break-word;
+}
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border-soft);
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  margin: 1rem 0;
+  max-width: 78ch;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+pre .c { color: var(--fg-faint); }
+
+/* --- tables ------------------------------------------------------------- */
+.scroller { overflow-x: auto; margin: 1.25rem 0; border: 1px solid var(--border); border-radius: 0.5rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--border-soft); }
+th { background: var(--bg-soft); font-weight: 650; font-size: 0.8125rem; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+td code { white-space: nowrap; }
+td.wrap-code code { white-space: normal; }
+.mono-col { font-family: var(--mono); font-size: 0.8125rem; white-space: nowrap; }
+
+/* --- callouts ----------------------------------------------------------- */
+.note {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-soft);
+  padding: 0.875rem 1rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+  margin: 1.25rem 0;
+  max-width: 78ch;
+}
+.note.danger { border-left-color: var(--fail); }
+.note.caution { border-left-color: var(--warn); }
+.note > :first-child { margin-top: 0; }
+.note > :last-child { margin-bottom: 0; }
+.note .label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  margin-bottom: 0.25rem;
+}
+
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  vertical-align: 0.05em;
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.fail { background: var(--fail-bg); color: var(--fail); }
+.badge.info { background: var(--info-bg); color: var(--info); }
+.badge.root { background: var(--fail-bg); color: var(--fail); }
+.badge.norm { background: var(--info-bg); color: var(--info); }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.875rem; margin: 1.25rem 0; max-width: 78ch; }
+.card { border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.875rem 1rem; background: var(--bg-soft); }
+.card .k { font-family: var(--mono); font-size: 0.8125rem; font-weight: 700; color: var(--accent); }
+.card .v { font-size: 0.8125rem; color: var(--fg-soft); margin-top: 0.2rem; line-height: 1.55; }
+
+footer {
+  margin-top: 5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  color: var(--fg-faint);
+  font-size: 0.8125rem;
+}
+
+/* --- narrow screens ----------------------------------------------------- */
+@media (max-width: 60rem) {
+  .wrap { display: block; }
+  nav {
+    position: static;
+    width: auto;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.25rem 1.5rem;
+  }
+  nav ol { columns: 2; column-gap: 1.5rem; }
+  nav ul { display: none; }
+  main { padding: 1.5rem 1.25rem 4rem; }
+  pre, p, .note, .cards, ul.body, ol.body { max-width: none; }
+}
+
+/* --- print -------------------------------------------------------------- */
+@media print {
+  nav { display: none; }
+  .wrap { display: block; }
+  main { padding: 0; }
+  body { font-size: 10.5pt; }
+  pre, .scroller { break-inside: avoid; }
+  h2 { break-after: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="目次">
+  <div class="nav-title">~/.config 詳細マニュアル</div>
+  <div class="nav-sub">dotconfig-stc</div>
+  <ol>
+    <li><a href="#quickref">クイックリファレンス</a></li>
+    <li><a href="#newmachine">新規マシンのセットアップ</a></li>
+    <li><a href="#daily">日常運用</a></li>
+    <li><a href="#repo-map">リポジトリの地図</a></li>
+    <li><a href="#bootstrap">bootstrap リファレンス</a>
+      <ul>
+        <li><a href="#steps">step 一覧（27）</a></li>
+        <li><a href="#doctor-rows">doctor の行（38）</a></li>
+        <li><a href="#manifests">manifest の列仕様</a></li>
+        <li><a href="#two-languages">なぜ shell と Go の二言語か</a></li>
+      </ul>
+    </li>
+    <li><a href="#shell">シェル環境（zsh）</a></li>
+    <li><a href="#editor">エディタ（neovim）</a></li>
+    <li><a href="#other">tmux / git / yt-dlp</a></li>
+    <li><a href="#trouble">トラブルシューティング</a></li>
+    <li><a href="#pitfalls">落とし穴カタログ</a></li>
+    <li><a href="#testing">テストと検証</a></li>
+    <li><a href="#limits">既知の限界</a></li>
+  </ol>
+</nav>
+
+<main>
+<h1>~/.config 詳細マニュアル</h1>
+<p class="lede">
+  この <code>~/.config</code> を Ubuntu マシン上で再現し、pin されたバージョンを維持し、
+  壊れたときに直すための参照資料。ブラウザで開いて <kbd>Ctrl+F</kbd> で引くことを想定している。
+  端末用の短い早見表は <code>bootstrap/MANUAL.md</code>、設計の記録（英語）は
+  <code>bootstrap/README.md</code> にある。
+</p>
+
+<!-- ================================================================== -->
+<h2 id="quickref">1. クイックリファレンス</h2>
+
+<p>覚えるコマンドは 3 つ。すべて冪等で、何度実行しても良い。</p>
+
+<pre><code>~/.config/bootstrap/bs.sh          <span class="c"># 環境を再現・修復する</span>
+~/.config/bootstrap/bs.sh update   <span class="c"># 全バージョンを最新にする → git diff を見て commit</span>
+~/.config/bootstrap/bs.sh doctor   <span class="c"># 今のマシンが manifest とどこで違うかを表で出す</span></code></pre>
+
+<p>補助として <code>bs.sh list</code>（step 一覧と root 要否）がある。</p>
+
+<div class="note">
+  <span class="label">原則</span>
+  <p><code>bs.sh</code> は <strong>commit された manifest に書いてあるものしか入れない</strong>。
+  バージョンが動くのは <code>bs.sh update</code> を実行したときだけで、勝手に上がることはない。</p>
+</div>
+
+<h3>オプション</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>オプション</th><th>意味</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">--only ID,…</td><td>この step だけ実行する。<strong>前方一致</strong>なので <code>--only tool:</code> で全ツール</td></tr>
+    <tr><td class="mono-col">--skip ID,…</td><td>この step を飛ばす（前方一致）</td></tr>
+    <tr><td class="mono-col">--dry-run</td><td>変更コマンドを表示するだけ。何も変更しない</td></tr>
+    <tr><td class="mono-col">--no-sudo</td><td>root が必要な step を飛ばし、最後に「後で流すコマンド」を表示する</td></tr>
+    <tr><td class="mono-col">--arch ARCH</td><td>アーキテクチャ検出を上書きする（テスト用）</td></tr>
+    <tr><td class="mono-col">--check</td><td><code>update</code> 専用。書き換えず「何が古いか」だけ表示（古いものがあれば exit 1）</td></tr>
+    <tr><td class="mono-col">--json</td><td><code>doctor</code> 専用。機械可読出力</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>存在しない ID を指定した場合は「何も実行しなかった」ことを明示して <strong>exit 2</strong> で終わる。
+タイプミスが成功に見えないようにしてある。</p>
+
+<h3>よく使う組み合わせ</h3>
+
+<pre><code>bs.sh --only tool:              <span class="c"># pin されたバイナリを全部入れ直す</span>
+bs.sh --only tool:fzf           <span class="c"># 1 つだけ</span>
+bs.sh --only nvim,nvim:plugins  <span class="c"># neovim 関連だけ</span>
+bs.sh --skip nvim:plugins       <span class="c"># 遅いものを飛ばす</span>
+bs.sh update --check            <span class="c"># 上流に対して何か遅れているか</span>
+bs.sh update starship uv        <span class="c"># 一部だけ上げる</span></code></pre>
+
+<!-- ================================================================== -->
+<h2 id="newmachine">2. 新規マシンのセットアップ</h2>
+
+<pre><code><span class="c"># 1. 最小の足場（これだけは手で入れる）</span>
+sudo apt update &amp;&amp; sudo apt install -y git zsh
+
+<span class="c"># 2. ~/.config をこの repo にする</span>
+cd "$HOME/.config"
+git init
+git remote add origin git@github.com:mbyamaguchi/dotconfig-stc.git
+git fetch
+git checkout main
+
+<span class="c"># 3. あとはこれ 1 つ</span>
+./bootstrap/bs.sh
+
+<span class="c"># 4. 新しいシェルへ</span>
+exec zsh</code></pre>
+
+<p>
+  <code>bs.sh</code> は途中で 1 度だけ sudo のパスワードを聞き、以降は無人で走る
+  （バックグラウンドで sudo のタイムスタンプを維持している）。所要時間は回線次第で 10〜20 分。
+  neovim のプラグイン復元と treesitter パーサーのビルドが大半を占める。
+  終わったら <code>bs.sh doctor</code> で確認する。
+</p>
+
+<h3>sudo が使えない環境で</h3>
+
+<pre><code>./bootstrap/bs.sh --no-sudo</code></pre>
+
+<p>root が必要な 7 step（<code>apt:base</code> <code>apt:cpp</code> <code>apt:media</code>
+<code>gh</code> <code>locale</code> <code>zdotdir</code> <code>shell</code>）は飛ばされ、
+それ以外はすべて実行される。<code>locale</code> には root 不要の代替経路もあり、
+<code>$XDG_DATA_HOME/locale</code> に <code>localedef</code> で自前生成して
+<code>zsh/.zshenv</code> が <code>LOCPATH</code> 経由で拾う。</p>
+
+<div class="note danger">
+  <span class="label">してはいけないこと</span>
+  <p><code>sudo ./bootstrap/bs.sh</code> と実行してはいけない。すべてが
+  <code>/root/.local</code> に入ってしまうため、スクリプトが検知して<strong>拒否する</strong>。
+  個々のコマンドが必要な場面で自分だけ昇格する設計になっている。</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="daily">3. 日常運用</h2>
+
+<h3>バージョンを上げる</h3>
+
+<pre><code>bs.sh update          <span class="c"># manifest を書き換える</span>
+git diff              <span class="c"># 何が上がるかを確認</span>
+git commit -am 'Bump pins'
+bs.sh                 <span class="c"># 適用</span></code></pre>
+
+<p><code>update</code> が参照する上流は 5 系統（GitHub Releases / nodejs.org / npm registry /
+go.dev / <code>git ls-remote</code>）で、並行取得するので全体で数秒。
+一部だけ上げるなら <code>bs.sh update starship</code> のように名前を渡す。</p>
+
+<h4>意図的に上げないもの</h4>
+<ul class="body">
+  <li><strong>rust</strong> — <code>stable</code> 追従。この repo は rustc のバージョンに依存せず、
+  ~200MB のツールチェーンを bump ごとに再取得する価値がない。<code>min</code> だけが古すぎる版を捕まえる。</li>
+  <li><strong>yt-dlp</strong> — <code>latest</code> 固定。古い yt-dlp はサイト変更で動かなくなるので、
+  ここでは追従が正解。manifest にもそう書いてある。</li>
+  <li><strong>apt パッケージ</strong> — <a href="#manifests">manifest の節</a>を参照。</li>
+</ul>
+
+<h3>点検する</h3>
+
+<pre><code>bs.sh doctor          <span class="c"># 差分があれば exit 1</span>
+bs.sh doctor --json   <span class="c"># 機械可読（将来 systemd timer で回す用）</span></code></pre>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>STATUS</th><th>意味</th></tr></thead>
+  <tbody>
+    <tr><td><span class="badge ok">OK</span></td><td>manifest どおり</td></tr>
+    <tr><td><span class="badge warn">WARN</span></td><td>違っている。<code>bs.sh</code> で直る可能性が高い</td></tr>
+    <tr><td><span class="badge fail">FAIL</span></td><td>壊れている。放置すると使えない（locale・ZDOTDIR・git の identity など）</td></tr>
+    <tr><td><span class="badge info">INFO</span></td><td>参考情報。exit code には影響しない</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>何も変更したくない確認</h3>
+
+<pre><code>bs.sh --dry-run                    <span class="c"># 変更コマンドを表示するだけ</span>
+bs.sh --dry-run --arch aarch64     <span class="c"># 別アーキテクチャでの挙動</span>
+bs.sh update --check               <span class="c"># 上流との差分だけ</span></code></pre>
+
+<!-- ================================================================== -->
+<h2 id="repo-map">4. リポジトリの地図</h2>
+
+<p>
+  <code>~/.config</code> そのものが git repo になっている。ここには Chrome のプロファイルや
+  gh のトークンのような「絶対に追跡したくないもの」も同居しているので、
+  <code>.gitignore</code> は<strong>全無視してから明示的に許可する</strong> allowlist 方式になっている。
+</p>
+
+<pre><code><span class="c"># all files</span>
+*
+
+<span class="c"># .gitignore</span>
+!.gitignore
+
+<span class="c"># bootstrap</span>
+<span class="c"># The `*` above ignores every level, so each directory needs its own negation</span>
+!bootstrap/
+!bootstrap/*
+!bootstrap/steps/
+!bootstrap/steps/*
+…</code></pre>
+
+<div class="note caution">
+  <span class="label">追加するときの注意</span>
+  <p>先頭の <code>*</code> は<strong>すべての階層</strong>を無視する。ディレクトリ自身の否定
+  （<code>!manual/</code>）が無いと git はそこへ降りていかないので、
+  <code>!manual/*</code> は永久に参照されない。新しいディレクトリを追跡するときは
+  <strong>2 行</strong>必要。</p>
+</div>
+
+<h3>追跡されているもの</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>パス</th><th>中身</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">bootstrap/</td><td>再現の仕組み一式（<a href="#bootstrap">§5</a>）</td></tr>
+    <tr><td class="mono-col">manual/</td><td>このマニュアル</td></tr>
+    <tr><td class="mono-col">zsh/.zshenv .zshrc aliases.zsh</td><td>シェル環境（<a href="#shell">§6</a>）</td></tr>
+    <tr><td class="mono-col">sheldon/plugins.toml</td><td>zsh プラグイン 5 個の commit pin</td></tr>
+    <tr><td class="mono-col">nvim/init.lua lua/config/**</td><td>エディタ設定（<a href="#editor">§7</a>）</td></tr>
+    <tr><td class="mono-col">nvim/lazy-lock.json</td><td>プラグイン 34 個の commit pin。<strong>この repo で最も価値の高い pin</strong></td></tr>
+    <tr><td class="mono-col">tmux/tmux.conf</td><td>tmux 設定</td></tr>
+    <tr><td class="mono-col">git/config git/ignore</td><td>共有できる git 設定</td></tr>
+    <tr><td class="mono-col">git/config.local.template</td><td>マシン固有設定の雛形</td></tr>
+    <tr><td class="mono-col">yt-dlp/download-playlist.sh</td><td>プレイリスト取得スクリプト</td></tr>
+    <tr><td class="mono-col">README.md .gitignore</td><td>入口と allowlist</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>意図的に追跡していないもの</h3>
+
+<ul class="body">
+  <li><code>git/config.local</code> — <strong>実アドレスと GPG 署名鍵</strong>を持つ。公開 repo に
+  入れてはいけないので untracked。雛形だけが <code>git/config.local.template</code> として追跡され、
+  <code>bs.sh</code> の <code>git:local</code> step がコピーする（既存ファイルは絶対に上書きしない）。</li>
+  <li><code>zsh/.zsh_history</code>、<code>gh/</code>、<code>google-chrome/</code>、
+  <code>fcitx5/</code> など — 履歴・トークン・プロファイル。</li>
+  <li><code>nvim.bak/</code>、<code>nvm/</code>、<code>bob/</code> — 生成物と外部管理のツリー。</li>
+</ul>
+
+<p><code>bootstrap/test/container.sh</code> は <code>git archive HEAD</code> をコンテナへ流し込むので、
+<strong>追跡ファイルだけ</strong>が検証環境に入る。トークンや履歴がコンテナに漏れない構造になっている。</p>
+
+<!-- ================================================================== -->
+<h2 id="bootstrap">5. bootstrap リファレンス</h2>
+
+<pre><code>bootstrap/
+├── bs.sh          エントリポイント。引数解析・step 実行・install
+├── lib.sh         共有ヘルパー（ログ・バージョン・ダウンロード・PATH・述語）
+├── tools.tsv      ★ GitHub Releases のバイナリの pin
+├── apt.tsv        apt パッケージ（グループ別。版は pin しない）
+├── runtimes.tsv   ★ nvim / node / pnpm / go / rust
+├── steps/         1 ファイル 1 関心事。ファイル名の番号順に実行
+├── tool/          doctor と update（Go・依存ゼロ）
+├── cleanup.sh     読まれていないファイルの退避（--yes 必須。削除ではなく移動）
+└── test/          lint.sh と container.sh</code></pre>
+
+<h3 id="steps">step 一覧（27）</h3>
+
+<p><code>bs.sh list</code> の出力と同じもの。ID は <code>--only</code> / <code>--skip</code> に
+そのまま渡せる（前方一致）。</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>ID</th><th>root</th><th>内容</th><th>実装</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">apt:base</td><td><span class="badge root">要</span></td><td>基本 apt パッケージ（git, curl, zsh, ripgrep, fd-find, bat, jq, shellcheck, tmux, xsel, build-essential …）と <code>fd</code>/<code>bat</code> の名前 shim</td><td class="mono-col">steps/10-apt.sh</td></tr>
+    <tr><td class="mono-col">apt:cpp</td><td><span class="badge root">要</span></td><td>C/C++ ツールチェーン（clang, clangd, clang-format, clang-tidy, lldb, gdb, cmake, ninja-build, make）</td><td class="mono-col">steps/10-apt.sh</td></tr>
+    <tr><td class="mono-col">apt:media</td><td><span class="badge root">要</span></td><td>ffmpeg（yt-dlp がストリーム結合に使う）</td><td class="mono-col">steps/10-apt.sh</td></tr>
+    <tr><td class="mono-col">gh</td><td><span class="badge root">要</span></td><td>GitHub CLI。専用の apt リポジトリから</td><td class="mono-col">steps/10-apt.sh</td></tr>
+    <tr><td class="mono-col">locale</td><td><span class="badge root">要</span></td><td><code>zsh/.zshenv</code> が要求する ja_JP / en_US ロケールを生成</td><td class="mono-col">steps/20-locale.sh</td></tr>
+    <tr><td class="mono-col">zdotdir</td><td><span class="badge root">要</span></td><td><code>/etc/zsh/zshenv</code> 経由で zsh を <code>~/.config/zsh</code> に向ける</td><td class="mono-col">steps/30-zdotdir.sh</td></tr>
+    <tr><td class="mono-col">tool:eza</td><td><span class="badge norm">–</span></td><td rowspan="12">
+      <code>tools.tsv</code> 1 行から生成される。GitHub Releases のアセットを取得して
+      <code>~/.local/bin</code>（フォントは <code>~/.local/share/fonts</code>）へ展開する。
+      <code>~/.local/bin</code> は <code>zsh/.zshenv</code> の <code>path</code> で
+      <code>/usr/bin</code> より前にあるので、apt 版があっても pin 版が勝つ。
+    </td><td rowspan="12" class="mono-col">steps/40-tools.sh<br>+ tools.tsv</td></tr>
+    <tr><td class="mono-col">tool:fzf</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:zoxide</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:yazi</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:starship</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:sheldon</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:bob</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:uv</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:pixi</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:cica</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:yt-dlp</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">tool:stylua</td><td><span class="badge norm">–</span></td></tr>
+    <tr><td class="mono-col">rust</td><td><span class="badge norm">–</span></td><td>rustup 経由。<code>stable</code> 追従。<code>rustfmt</code> と <code>clippy</code> も入れる</td><td class="mono-col">steps/50-runtimes.sh</td></tr>
+    <tr><td class="mono-col">go</td><td><span class="badge norm">–</span></td><td>上流 tarball を <code>~/.local/go</code> へ。<code>~/.local/bin</code> に shim（apt の golang は EOL 1.22）</td><td class="mono-col">steps/50-runtimes.sh</td></tr>
+    <tr><td class="mono-col">node</td><td><span class="badge norm">–</span></td><td>nvm 経由。<strong><code>nvm alias default</code> を pin と一致させる</strong>のが要点</td><td class="mono-col">steps/50-runtimes.sh</td></tr>
+    <tr><td class="mono-col">pnpm</td><td><span class="badge norm">–</span></td><td>pnpm 本体（corepack があればそれ経由）と、エディタが使う node ツール 3 つ（prettier, eslint_d, tree-sitter-cli）</td><td class="mono-col">steps/50-runtimes.sh</td></tr>
+    <tr><td class="mono-col">nvim</td><td><span class="badge norm">–</span></td><td>bob 経由で pin された Neovim</td><td class="mono-col">steps/60-neovim.sh</td></tr>
+    <tr><td class="mono-col">nvim:plugins</td><td><span class="badge norm">–</span></td><td><code>lazy-lock.json</code> からプラグインを復元し、treesitter パーサーをビルドし、Mason に LSP を入れさせる。<strong>一番遅い</strong></td><td class="mono-col">steps/60-neovim.sh</td></tr>
+    <tr><td class="mono-col">git:local</td><td><span class="badge norm">–</span></td><td>雛形から <code>git/config.local</code> を作る（既存は上書きしない）</td><td class="mono-col">steps/80-git.sh</td></tr>
+    <tr><td class="mono-col">zsh:plugins</td><td><span class="badge norm">–</span></td><td>sheldon で zsh プラグイン 5 個を pin された revision で clone</td><td class="mono-col">steps/90-shell.sh</td></tr>
+    <tr><td class="mono-col">shell</td><td><span class="badge root">要</span></td><td>ログインシェルを zsh にする</td><td class="mono-col">steps/90-shell.sh</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="doctor-rows">doctor の行（38）</h3>
+
+<p>
+  <code>bs.sh doctor</code> は install とは<strong>別の実装</strong>（Go）でマシンを検査する。
+  行 ID は step ID と一対一ではなく、step が生んだ結果を細かく分けて見張っている
+  （例: <code>nvim:plugins</code> step の結果は <code>nvim:plugins</code>・<code>nvim:parsers</code>・
+  <code>nvim:tools</code>・<code>nvim:lock</code> の 4 行になる）。
+</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>行</th><th>何を見ているか</th><th>OK でないときの対処</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">apt:base</td><td rowspan="3"><code>apt.tsv</code> の各グループのパッケージが <code>dpkg-query</code> で入っているか</td><td rowspan="3"><code>bs.sh --only apt:base</code>（sudo 必要）</td></tr>
+    <tr><td class="mono-col">apt:media</td></tr>
+    <tr><td class="mono-col">apt:cpp</td></tr>
+    <tr><td class="mono-col">shim:fd</td><td rowspan="2">Ubuntu の <code>fd-find</code>/<code>bat</code> は <code>fdfind</code>/<code>batcat</code> という名前で入る。<code>~/.local/bin</code> に本来の名前の shim があるか</td><td rowspan="2"><code>bs.sh --only apt:base</code>。無いと <code>zsh/aliases.zsh</code> が素の <code>ls</code>/<code>cat</code> にフォールバックする</td></tr>
+    <tr><td class="mono-col">shim:bat</td></tr>
+    <tr><td class="mono-col">gh</td><td>GitHub CLI が入っているか（版は pin しない）</td><td><code>bs.sh --only gh</code>（sudo 必要）</td></tr>
+    <tr><td class="mono-col">locale</td><td>ja_JP.UTF-8 / en_US.UTF-8 が system-wide か <code>LOCPATH</code> 経由で使えるか</td><td><span class="badge fail">FAIL</span> なら全サブプロセスが <code>LC_CTYPE</code> の警告を出す状態。<code>bs.sh --only locale</code></td></tr>
+    <tr><td class="mono-col">zdotdir</td><td><code>/etc/zsh/zshenv</code> に <code>ZDOTDIR</code> が設定されているか</td><td><span class="badge fail">FAIL</span> は zsh がこの repo を読んでいない状態。<code>bs.sh --only zdotdir</code></td></tr>
+    <tr><td class="mono-col">tool:eza</td><td rowspan="12">
+      <code>tools.tsv</code> の pin と実際の版が一致するか。加えて<strong>どこから来ているか</strong>も見る
+      （<code>/usr/bin</code> の apt 版が pin 版を覆っていれば WARN）。
+      <code>latest</code> 指定のものは <code>min</code> を下回っていないかだけを見る。
+      <code>tool:cica</code> はフォントなので、<code>~/.local/share/fonts</code> の face 数を数える。
+    </td><td rowspan="12"><code>bs.sh --only tool:&lt;name&gt;</code> で <code>~/.local/bin</code> に入れ直す</td></tr>
+    <tr><td class="mono-col">tool:fzf</td></tr>
+    <tr><td class="mono-col">tool:zoxide</td></tr>
+    <tr><td class="mono-col">tool:yazi</td></tr>
+    <tr><td class="mono-col">tool:starship</td></tr>
+    <tr><td class="mono-col">tool:sheldon</td></tr>
+    <tr><td class="mono-col">tool:bob</td></tr>
+    <tr><td class="mono-col">tool:uv</td></tr>
+    <tr><td class="mono-col">tool:pixi</td></tr>
+    <tr><td class="mono-col">tool:cica</td></tr>
+    <tr><td class="mono-col">tool:yt-dlp</td></tr>
+    <tr><td class="mono-col">tool:stylua</td></tr>
+    <tr><td class="mono-col">rust</td><td><code>cargo</code> の版が <code>min</code> 以上か（pin ではなく下限で判定）</td><td><code>rustup update stable</code> または <code>bs.sh --only rust</code></td></tr>
+    <tr><td class="mono-col">go</td><td>pin と一致するか。<code>/usr/bin/go</code>（apt の EOL 1.22）が勝っていないか</td><td><code>bs.sh --only go</code></td></tr>
+    <tr><td class="mono-col">node</td><td>pin と一致するか、<strong>かつ <code>$NVM_DIR/alias/default</code> が pin と一致するか</strong></td><td><code>bs.sh --only node</code>。<a href="#pitfalls">落とし穴 ③</a> を参照</td></tr>
+    <tr><td class="mono-col">pnpm</td><td>pin と一致するか</td><td><code>bs.sh --only pnpm</code></td></tr>
+    <tr><td class="mono-col">node:eslint_d</td><td rowspan="2">PATH にあるか、<strong>実際に動くか</strong>、そして単一の node バージョンのディレクトリの中にいないか（そこにあると次の node bump で消える）</td><td rowspan="2"><code>bs.sh --only pnpm</code>。<code>$PNPM_HOME/bin</code> に入れ直す</td></tr>
+    <tr><td class="mono-col">node:prettier</td></tr>
+    <tr><td class="mono-col">node:tree-sitter</td><td>同上。<strong>ここが「PATH にあるが動かない」と言う場合が最重要</strong>——パーサーが 1 つもビルドされない</td><td><code>bs.sh --only pnpm</code> が <code>--allow-build</code> 付きで入れ直す。<a href="#pitfalls">落とし穴 ①⑤</a></td></tr>
+    <tr><td class="mono-col">nvim</td><td>bob が入れた版が <code>runtimes.tsv</code> の pin と一致するか</td><td><code>bs.sh --only nvim</code></td></tr>
+    <tr><td class="mono-col">nvim:plugins</td><td><code>$XDG_DATA_HOME/nvim/lazy/</code> のプラグイン数が <code>lazy-lock.json</code> の数に届いているか</td><td><code>bs.sh --only nvim:plugins</code></td></tr>
+    <tr><td class="mono-col">nvim:parsers</td><td><code>$XDG_DATA_HOME/nvim/site/parser/*.so</code> の数が <code>config/treesitter-parsers.lua</code> の要求数に届いているか</td><td>まず <code>node:tree-sitter</code> 行を見る。直してから <code>bs.sh --only nvim:plugins</code></td></tr>
+    <tr><td class="mono-col">nvim:tools</td><td>conform.nvim と nvim-lint が名前で呼ぶ <code>clangd</code> <code>clang-format</code> <code>stylua</code> <code>rustfmt</code> が PATH にあるか</td><td>足りないものに応じて <code>bs.sh --only apt:cpp</code> / <code>tool:stylua</code> / <code>rust</code></td></tr>
+    <tr><td class="mono-col">nvim:lock</td><td><code>nvim/lazy-lock.json</code> に未 commit の変更が無いか</td><td>プラグインを更新したなら <code>git commit nvim/lazy-lock.json</code>。戻したいなら <code>bs.sh --only nvim:plugins</code></td></tr>
+    <tr><td class="mono-col">git:local</td><td><code>git/config.local</code> が存在し、<code>user.email</code> が解決するか</td><td><span class="badge fail">FAIL</span> は commit が拒否される状態（<code>git/config</code> が <code>user.useConfigOnly</code> を設定している）。<code>bs.sh --only git:local</code> の後に編集</td></tr>
+    <tr><td class="mono-col">git:home</td><td><code>~/.gitconfig</code> が XDG 側の設定を覆っていないか</td><td><a href="#other">§8 の git</a> の手順で <code>config.local</code> へ畳む</td></tr>
+    <tr><td class="mono-col">zsh:plugins</td><td><code>sheldon/plugins.toml</code> の 5 個すべてに <code>rev</code> があり、clone 済みで、その revision に居るか</td><td><code>bs.sh --only zsh:plugins</code>（内部で <code>sheldon lock</code>）</td></tr>
+    <tr><td class="mono-col">shell</td><td>ログインシェルが zsh か</td><td><code>bs.sh --only shell</code>（sudo 必要）</td></tr>
+    <tr><td class="mono-col">path</td><td><code>bs.sh</code> が前提にしている 9 ディレクトリが<strong>実際の zsh の <code>$path</code></strong> に載っているか（zsh を起動して確認する）</td><td><code>zsh/.zshenv</code> の <code>path</code> 配列に足す</td></tr>
+    <tr><td class="mono-col">wsl</td><td><span class="badge info">INFO</span>。<code>/mnt/*</code> の Windows PATH が何本残っているか。剪定の回帰が見えるようにするため</td><td>対処不要。<a href="#shell">§6</a> の keep-list を参照</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="manifests">manifest の列仕様</h3>
+
+<h4>tools.tsv — GitHub Releases のバイナリ</h4>
+
+<p>GitHub Releases から取れるバイナリなら<strong><code>tools.tsv</code> に 1 行足すだけ</strong>。
+step の登録・<code>--only</code> の ID・<code>doctor</code> の行・<code>update</code> 対応は
+すべてそこから生成される。</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>列</th><th>意味</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">name</td><td>コマンド名。step ID は <code>tool:&lt;name&gt;</code> になる</td></tr>
+    <tr><td class="mono-col">ref</td><td><strong>上流のリリースタグをそのまま</strong>。<code>v</code> の有無は上流に合わせる（sheldon と uv は <code>v</code> なし）。<code>latest</code> で毎回最新を解決</td></tr>
+    <tr><td class="mono-col">min</td><td>設定が要求する下限。<code>ref=latest</code> のときのガード。不要なら <code>-</code></td></tr>
+    <tr><td class="mono-col">repo</td><td><code>owner/name</code></td></tr>
+    <tr><td class="mono-col">asset</td><td>リリースのアセット名。プレースホルダは <code>{TAG}</code> <code>{VERSION}</code> <code>{ARCH}</code> <code>{RUST_GNU}</code> <code>{RUST_MUSL}</code> <code>{GOARCH}</code> <code>{BOB_ARCH}</code>（一覧は <code>tools.tsv</code> 冒頭）</td></tr>
+    <tr><td class="mono-col">install</td><td><code>bin:名前,名前</code> または <code>font</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>追加したら確認する:</p>
+
+<pre><code>bs.sh --dry-run --only tool:&lt;name&gt;   <span class="c"># 生成される URL が実際のアセット名と一致するか</span>
+bs.sh --only tool:&lt;name&gt;
+cd bootstrap/tool &amp;&amp; go test ./...   <span class="c"># manifest の形式チェックが走る</span></code></pre>
+
+<p>「ダウンロードして展開する」以上のことが必要なものは <code>steps/</code> にファイルを足す。
+関数 1 つと <code>register</code> 1 行が最小構成——一番小さい例は <code>steps/30-zdotdir.sh</code>。</p>
+
+<h4>runtimes.tsv — 各自の版管理を持つもの</h4>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>name</th><th>ref</th><th>min</th><th>入れ方</th><th>備考</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">nvim</td><td class="mono-col">v0.12.3</td><td class="mono-col">0.12.0</td><td>bob</td><td><code>lsp.lua</code> が 0.12 の native <code>vim.lsp</code> API で書かれているので 0.11 では動かない</td></tr>
+    <tr><td class="mono-col">node</td><td class="mono-col">24.15.0</td><td class="mono-col">20.0.0</td><td>nvm</td><td><code>nvm alias default</code> を pin と一致させること（<a href="#pitfalls">落とし穴 ③</a>）</td></tr>
+    <tr><td class="mono-col">pnpm</td><td class="mono-col">11.15.0</td><td class="mono-col">9.0.0</td><td>corepack / get.pnpm.io</td><td>インストーラは <code>PNPM_VERSION</code> を渡さないと pin を無視する</td></tr>
+    <tr><td class="mono-col">go</td><td class="mono-col">1.26.5</td><td class="mono-col">1.22.0</td><td>go.dev tarball</td><td>apt の <code>golang</code>（noble は 1.22.2）は EOL</td></tr>
+    <tr><td class="mono-col">rust</td><td class="mono-col">stable</td><td class="mono-col">1.85.0</td><td>rustup</td><td>意図的に追従（<a href="#daily">§3</a>）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>apt.tsv — バージョンを pin しないもの</h4>
+
+<p>
+  グループ（<code>base</code> / <code>cpp</code> / <code>media</code>）ごとにパッケージを列挙する。
+  <strong>版は意図的に pin しない。</strong> Ubuntu の archive は古い版を削除するので、
+  <code>ripgrep=14.1.1-1</code> のような pin は noble-updates がパッケージを差し替えた瞬間に壊れる。
+  pin はここでは再現性を<strong>下げる</strong>。固定しているのは<strong>集合</strong>であって版ではない。
+  版に敏感なものは <code>tools.tsv</code> に置く。
+</p>
+
+<h3 id="two-languages">なぜ shell と Go の二言語か</h3>
+
+<ul class="body">
+  <li><strong>install は shell。</strong> 中身はほぼプロセスの орchestration で、apt・curl・tar・git・nvim
+  へ shell out する箇所が 100 以上ある。Go だとそれぞれが <code>exec.Command</code> + エラー処理になる。
+  より本質的な理由として、<strong>bootstrap が自分でインストールするツールチェーンを要求してはいけない</strong>。
+  この repo に CI は無く push もしないので、Go バイナリは新規マシン上で——
+  <code>runtimes.tsv</code> が置き換えようとしている EOL の Go 1.22 で——ビルドされることになる。</li>
+  <li><strong>doctor と update は Go。</strong> こちらは HTTP・JSON・バージョン比較で、
+  shell 版の実際のバグはすべてそこにあった（<code>0.9.3</code> が <code>0.10.0</code> より大きいと判定される、
+  <code>v</code> 接頭辞の有無、アセット名の展開ミス）。<code>go test</code> で挙動を固定できる場所に置いた。
+  どちらも新規マシンでは不要（初日に上流より遅れているものは無い）なので、
+  実行する時点では <code>bs.sh</code> が Go を入れ終わっている。</li>
+</ul>
+
+<p><code>bs.sh doctor</code> と <code>bs.sh update</code> は初回に <code>tool/</code> をビルドして
+<code>$XDG_CACHE_HOME/dotconfig/</code> にキャッシュし、<code>.go</code> が変わったら再ビルドする。
+バイナリは commit しない（アーキテクチャ依存で、読んで検証できないから）。
+パッケージは<strong>依存ゼロ</strong>なので、ビルドにネットワークも <code>go.sum</code> も要らない。</p>
+
+<div class="note caution">
+  <span class="label">代償</span>
+  <p>step のインストールは <code>steps/*.sh</code>、その検証は <code>tool/doctor.go</code> にある。
+  <code>tools.tsv</code> 由来の行は両方が manifest から生成されるので影響しないが、
+  個別 step については<strong>直す場所が 2 ファイル</strong>になる。</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="shell">6. シェル環境（zsh）</h2>
+
+<p>
+  zsh は <code>/etc/zsh/zshenv</code> の <code>ZDOTDIR=$HOME/.config/zsh</code> によって
+  この repo を読む（<code>zdotdir</code> step が設定する）。これが無いと <code>~/.zshrc</code> が
+  読まれ、この設定は<strong>まったく効かない</strong>。
+</p>
+
+<h3>zsh/.zshenv — 全シェルが読む</h3>
+
+<p>PATH と環境変数が <code>.zshrc</code> ではなく <code>.zshenv</code> にあるのは、
+<strong>非対話シェル</strong>（<code>zsh -c</code>、スクリプト、エディタのサブシェル）にも
+同じツールチェーンを見せるため。</p>
+
+<div class="cards">
+  <div class="card"><div class="k">XDG_*</div><div class="v">config / cache / data / state を明示。以降のすべてがこれを基準にする</div></div>
+  <div class="card"><div class="k">LOCPATH</div><div class="v">ディレクトリが<strong>存在するときだけ</strong> export する（落とし穴 ④）</div></div>
+  <div class="card"><div class="k">LANG / LANGUAGE</div><div class="v"><code>LANG=ja_JP.UTF-8</code>、メッセージは <code>en_US.UTF-8</code></div></div>
+  <div class="card"><div class="k">EDITOR</div><div class="v"><code>nvim</code>。<code>GIT_EDITOR</code> 等も同じ値に揃える</div></div>
+  <div class="card"><div class="k">HISTFILE</div><div class="v"><code>$ZDOTDIR/.zsh_history</code>、10 万行</div></div>
+  <div class="card"><div class="k">PNPM_HOME / NVM_DIR</div><div class="v"><code>$XDG_DATA_HOME/pnpm</code>、<code>$XDG_CONFIG_HOME/nvm</code></div></div>
+</div>
+
+<h4>path 配列と <code>(N-/)</code> フィルタ</h4>
+
+<p>
+  <code>path</code> には「入っていたら使いたいもの」を全部並べ、最後に
+  <code>path=( ${^path}(N-/) )</code> で<strong>実在するディレクトリだけ</strong>に絞る。
+  <code>N</code> は該当なしでもエラーにしない、<code>-/</code> はシンボリックリンクを辿って
+  ディレクトリのみ。この 1 行があるおかげで、未インストールのツールに個別の
+  <code>if</code> を書く必要がない。
+</p>
+
+<p>順序が意味を持つ: <code>~/.local/bin</code> が <code>/usr/bin</code> より<strong>前</strong>にあるので、
+<code>tools.tsv</code> の pin 版が apt 版を（sudo なしで）覆う。<code>typeset -U path</code> で重複も消える。</p>
+
+<h4>WSL の PATH 剪定（~80ms）</h4>
+
+<p>
+  WSL は Windows 側のディレクトリを ~16 本 PATH に足す。zsh がコマンドハッシュを作る際に
+  drvfs 越しで全部読むため、<strong>1 シェルあたり ~80ms</strong>——他の全部を合わせたより高い。
+  そこで実際に使うものだけを keep-list で残し、残りを落とす:
+</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>keep するパターン</th><th>これで使えるもの</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">*/Microsoft VS Code/bin*</td><td><code>code</code></td></tr>
+    <tr><td class="mono-col">/mnt/[a-z]/Windows/[sS]ystem32</td><td><code>clip.exe</code>, <code>cmd.exe</code>, <code>where.exe</code></td></tr>
+    <tr><td class="mono-col">/mnt/[a-z]/Windows</td><td><code>explorer.exe</code></td></tr>
+    <tr><td class="mono-col">*/WinGet/Links*</td><td>winget で入れた shim</td></tr>
+    <tr><td class="mono-col">*/WindowsApps*</td><td><code>winget.exe</code>、ストアアプリ</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>落とした先も<strong>フルパスなら到達できる</strong>。<code>/etc/wsl.conf</code> に
+<code>appendWindowsPath=false</code> を書けば剪定自体が不要になるが、上表のものまで
+消えるので keep-list 方式を採っている。<code>doctor</code> の <code>wsl</code> 行が
+残存本数を報告するので、剪定の回帰が見える。</p>
+
+<h4>node を nvm.sh なしで PATH に載せる</h4>
+
+<p>
+  <code>nvm.sh</code> は 4700 行あり、読み込み時に <code>nvm use default</code> を走らせる
+  （<strong>~620ms</strong>／シェル）。そこで <code>.zshenv</code> は
+  <code>$NVM_DIR/alias/default</code> を<strong>ファイルとして読み</strong>、
+  <code>$NVM_DIR/versions/node/v&lt;それ&gt;*/bin</code> を glob して PATH の先頭に置くだけにしている。
+  <code>.zshrc</code> 側では <code>nvm</code> を関数として定義しておき、
+  <strong>実際に <code>nvm</code> コマンドが呼ばれた時に初めて</strong> <code>nvm.sh</code> を source する。
+</p>
+
+<h3>zsh/.zshrc — 対話シェルだけが読む</h3>
+
+<ul class="body">
+  <li><strong><code>has()</code></strong> — <code>(( $+commands[$1] ))</code> で zsh 自身のコマンドハッシュを見る。
+  <code>$(command -v …)</code> と違って fork しない。すべての optional なツールがこれで守られている。</li>
+  <li><strong>sheldon → compinit の順序</strong> — <code>eval "$(sheldon source)"</code> は
+  compinit より<strong>前</strong>でなければならない。<code>zsh-completions</code> がここで
+  <code>fpath</code> に自分を足すため。</li>
+  <li><strong>compinit の高速化</strong> — セキュリティスキャン（<code>compaudit</code>、~60ms）は
+  1 日 1 回だけ。dump は <code>$XDG_CACHE_HOME/zsh/zcompdump</code> に置き、
+  新しければバックグラウンドで <code>zcompile</code> する。</li>
+  <li><strong>GPG_TTY</strong> — <code>$TTY</code>（zsh のパラメータなので無料）を export。
+  これが無いと commit の署名が <code>Inappropriate ioctl for device</code> で失敗する。
+  端末を持たないシェルには指すものが無いので <code>.zshenv</code> ではなくここ。</li>
+  <li><strong>prompt / fzf / zoxide</strong> — starship・<code>fzf --zsh</code>・zoxide を
+  <code>has</code> で守りつつ初期化。starship が無ければ素の <code>PROMPT</code> にフォールバック。</li>
+  <li><strong><code>y</code> 関数</strong> — yazi で移動した先のディレクトリに <code>cd</code> する。
+  <code>if has yazi</code>（<code>&amp;&amp;</code> ではない）で書いてあるのは、
+  ツールが無いときに <code>$?</code> を非ゼロで残すと starship が最初のプロンプトを
+  「コマンド失敗」として描いてしまうから。</li>
+</ul>
+
+<h3>zsh プラグイン（sheldon、5 個）</h3>
+
+<p>
+  すべて <code>sheldon/plugins.toml</code> で <strong>commit 単位に pin</strong> されている。
+  sheldon 自身の lockfile は解決済みパスしか記録せず revision を持たないので、
+  ここの <code>rev</code> が新規マシンで同じプラグインを得る唯一の手段。
+  <code>bs.sh update</code> が <code>git ls-remote</code> で 5 個まとめて更新する。
+</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>プラグイン</th><th>役割</th><th>defer</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">romkatv/zsh-defer</td><td>他プラグインの遅延読み込み機構</td><td>—（本体）</td></tr>
+    <tr><td class="mono-col">zsh-users/zsh-completions</td><td>補完定義の追加</td><td><strong>しない</strong>。<code>fpath</code> への追加が compinit より前に必要</td></tr>
+    <tr><td class="mono-col">zsh-users/zsh-autosuggestions</td><td>履歴からの候補表示</td><td>する</td></tr>
+    <tr><td class="mono-col">zdharma-continuum/fast-syntax-highlighting</td><td>コマンドラインの色付け</td><td>する</td></tr>
+    <tr><td class="mono-col">fdellwing/zsh-bat</td><td><code>man</code> を bat で色付け</td><td>する</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>zsh/aliases.zsh</h3>
+
+<p><code>has</code> で守ってあるので、ツールが無いマシンでは素のコマンドにフォールバックする
+（例: eza が無ければ <code>ll</code> は <code>ls -l</code>）。</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>系統</th><th>alias</th></tr></thead>
+  <tbody>
+    <tr><td>editor</td><td class="mono-col">v = nvim</td></tr>
+    <tr><td>ls (eza)</td><td class="mono-col">ls, ll = -l, la = -A, lla = -lA</td></tr>
+    <tr><td>git</td><td class="mono-col">g, gst, gsw, gbr, gfe, gpl, gad, gada, gcm, gmg, gpsh</td></tr>
+    <tr><td>docker</td><td class="mono-col">d = docker, dc = docker compose</td></tr>
+    <tr><td>cargo</td><td class="mono-col">cgo = cargo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="editor">7. エディタ（neovim）</h2>
+
+<h3>再現性は三層でできている</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>層</th><th>誰が管理するか</th><th>pin の在り処</th></tr></thead>
+  <tbody>
+    <tr><td>nvim バイナリ</td><td>bob</td><td><code>runtimes.tsv</code> の <code>nvim</code> 行。<code>$XDG_DATA_HOME/bob/nvim-bin</code> に入り、<code>.zshenv</code> の <code>path</code> に既に載っている</td></tr>
+    <tr><td>プラグイン 34 個</td><td>lazy.nvim</td><td><code>nvim/lazy-lock.json</code>（追跡）</td></tr>
+    <tr><td>treesitter パーサー</td><td>nvim-treesitter</td><td>直接の pin は無いが、<code>lazy-lock.json</code> の nvim-treesitter の commit からビルドされるので<strong>実質固定</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  <code>bs.sh</code> は <code>Lazy! restore</code> を使う。<code>sync</code> や <code>update</code> は
+  <strong>lockfile を動かす</strong>方向なのに対し、<code>restore</code> は
+  <strong>プラグインツリーを lockfile に合わせる</strong>方向で、これが再現の向き。初回の clone も兼ねる。
+</p>
+
+<h4>lazy.nvim 自身の pin</h4>
+
+<p>
+  <code>lua/config/lazy.lua</code> は lazy.nvim を clone する際、<code>lazy-lock.json</code> の
+  <code>lazy.nvim</code> エントリの commit を読んでその commit を checkout する。
+  <code>--branch=stable</code> にフォールバックするのは lockfile がまったく無いときだけ。
+  一致させないと、新規マシンで lazy.nvim だけが lockfile と違う版になり、
+  <strong>起動時に lazy が <code>lazy-lock.json</code> を書き換えてしまう</strong>。
+</p>
+
+<h4>treesitter パーサーのリストは 1 か所だけ</h4>
+
+<p>
+  対象言語は <code>nvim/lua/config/treesitter-parsers.lua</code> にある（18 言語:
+  typescript, tsx, javascript, json, yaml, toml, html, css, graphql, lua, vim, vimdoc,
+  markdown, markdown_inline, c, cpp, rust, python）。
+  <code>lazy.lua</code> の起動時 <code>install()</code> と bootstrap の
+  <code>install(...):wait()</code> が<strong>同じファイル</strong>を読む。
+  nvim-treesitter の書き換え後のブランチには <code>:TSUpdateSync</code> が無く、
+  <code>install()</code> は非同期なので、headless nvim はビルド完了前に終了してしまう——
+  だから bootstrap 側は明示的に <code>:wait()</code> でブロックする。
+</p>
+
+<h3>エディタが外部バイナリに依存している箇所</h3>
+
+<p>ここが <code>doctor</code> の <code>nvim:tools</code> と <code>node:*</code> 行が見張っている部分。
+どれか 1 つ欠けても<strong>エディタは静かに起動し、その機能だけが黙って動かない</strong>。</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>バイナリ</th><th>誰が呼ぶか</th><th>どこから来るか</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">prettier</td><td>conform.nvim（ts, tsx, js, jsx, json, jsonc, css, scss, html, markdown, yaml）</td><td><code>pnpm add -g</code> → <code>$PNPM_HOME/bin</code></td></tr>
+    <tr><td class="mono-col">stylua</td><td>conform.nvim（lua）</td><td><code>tools.tsv</code> → <code>~/.local/bin</code></td></tr>
+    <tr><td class="mono-col">clang-format</td><td>conform.nvim（c, cpp）</td><td><code>apt:cpp</code></td></tr>
+    <tr><td class="mono-col">rustfmt</td><td>conform.nvim（rust）</td><td>rustup component</td></tr>
+    <tr><td class="mono-col">ruff</td><td>conform.nvim（python, <code>ruff_format</code>）</td><td>Mason</td></tr>
+    <tr><td class="mono-col">eslint_d</td><td>nvim-lint。プロジェクトに eslint 設定が<strong>あるときだけ</strong>起動する</td><td><code>pnpm add -g</code></td></tr>
+    <tr><td class="mono-col">tree-sitter</td><td>nvim-treesitter が<strong>パーサーごとに</strong> <code>tree-sitter build</code> を呼ぶ</td><td><code>pnpm add -g --allow-build=tree-sitter-cli</code></td></tr>
+    <tr><td class="mono-col">clangd</td><td>LSP（C/C++）</td><td><code>apt:cpp</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Mason が入れる LSP サーバーは <code>ts_ls</code>, <code>eslint</code>, <code>lua_ls</code>,
+<code>jsonls</code>, <code>cssls</code>, <code>html</code>, <code>emmet_ls</code>,
+<code>clangd</code>, <code>rust_analyzer</code>, <code>pyright</code>。
+<code>bs.sh</code> は <code>nvim --headless +qa</code> をもう 1 回起動して
+<code>ensure_installed</code> を走らせる。<strong>これらの版は pin されていない</strong>
+（<a href="#limits">§12</a>）。</p>
+
+<h3>設定ファイルの構成</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">init.lua</td><td><code>config.options</code> → <code>config.lazy</code> → <code>config.keymaps</code> を順に読むだけ</td></tr>
+    <tr><td class="mono-col">lua/config/options.lua</td><td>行番号（相対併用）、<code>signcolumn</code>、インデント 2、<code>ignorecase</code>+<code>smartcase</code>、swap/backup 無効・<strong>undofile 有効</strong>、<code>updatetime=250</code>、<code>timeoutlen=300</code></td></tr>
+    <tr><td class="mono-col">lua/config/keymaps.lua</td><td><code>jk</code> で Normal、<code>&lt;C-s&gt;</code> 保存、<code>&lt;C-hjkl&gt;</code> でウィンドウ移動、<code>&lt;S-h&gt;/&lt;S-l&gt;</code> でバッファ移動、<code>&lt;A-j&gt;/&lt;A-k&gt;</code> で行移動、leader は <kbd>Space</kbd></td></tr>
+    <tr><td class="mono-col">lua/config/lazy.lua</td><td>lazy.nvim の bootstrap とプラグイン宣言（colorscheme は monokai-pro、lualine, indent-blankline, nvim-tree, treesitter, textobjects, autopairs, Comment, surround, which-key, todo-comments, flash）</td></tr>
+    <tr><td class="mono-col">lua/config/plugins/*.lua</td><td><code>lsp</code> / <code>cmp</code> / <code>conform</code> / <code>lint</code> / <code>telescope</code> を <code>import</code> で分割</td></tr>
+    <tr><td class="mono-col">lua/config/treesitter-parsers.lua</td><td>パーサー言語リスト（唯一の定義場所）</td></tr>
+    <tr><td class="mono-col">lua/config/autocmds.lua</td><td>autocmd 群</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="other">8. tmux / git / yt-dlp</h2>
+
+<h3>tmux</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>設定</th><th>値</th></tr></thead>
+  <tbody>
+    <tr><td>prefix</td><td class="mono-col">C-q</td></tr>
+    <tr><td>escape-time</td><td class="mono-col">0</td></tr>
+    <tr><td>色</td><td class="mono-col">tmux-256color + xterm-256color:Tc</td></tr>
+    <tr><td>マウス</td><td class="mono-col">on</td></tr>
+    <tr><td>分割</td><td class="mono-col">| 横に / - 縦に</td></tr>
+    <tr><td>移動 / リサイズ</td><td class="mono-col">h j k l / H J K L</td></tr>
+    <tr><td>コピー</td><td class="mono-col">mode-keys vi。v で選択、y で <code>xsel -bi</code> へ</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>新しいウィンドウ・ペインは <code>#{pane_current_path}</code> を継承する。
+<code>y</code> のヤンク先が <code>xsel</code> なので、<code>apt:base</code> がそれを入れている。</p>
+
+<h3>git の三層</h3>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>ファイル</th><th>追跡</th><th>役割</th></tr></thead>
+  <tbody>
+    <tr><td class="mono-col">git/config</td><td>する</td><td>共有できる設定。noreply アドレス、<code>init.defaultBranch=main</code>、<code>user.useConfigOnly=true</code>、そして <code>config.local</code> の <code>include</code></td></tr>
+    <tr><td class="mono-col">git/config.local</td><td><strong>しない</strong></td><td>実アドレス、<code>user.signingkey</code>、<code>commit.gpgsign</code>、gh の credential helper</td></tr>
+    <tr><td class="mono-col">git/ignore</td><td>する</td><td>グローバル ignore（現在は <code>**/.claude/settings.local.json</code>）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  <code>user.useConfigOnly=true</code> があるので、identity が設定されるまで commit は
+  <strong>拒否される</strong>——これは意図的で、事故で noreply や推測されたアドレスで
+  commit することを防いでいる。<code>doctor</code> の <code>git:local</code> 行が
+  <span class="badge fail">FAIL</span> を出すのがこの状態。
+</p>
+
+<div class="note danger">
+  <span class="label">~/.gitconfig を作り直さないこと</span>
+  <p>
+    <code>~/.gitconfig</code> は <code>~/.config/git/config</code> より<strong>後に読まれて勝つ</strong>ので、
+    そこに書いた設定は XDG 側から見えなくなり、新規マシンでも再現されない。
+    このマシンでは <code>user.signingkey</code> / <code>commit.gpgsign</code> / credential helper を
+    <code>config.local</code> へ畳み、<code>~/.gitconfig</code> 自体を
+    <code>~/.local/share/dotconfig-legacy/&lt;日時&gt;/</code> へ退避した。
+  </p>
+  <p>
+    さらに <code>~/.gitconfig</code> が無い状態では、git のグローバル設定先は
+    <code>~/.config/git/config</code>——<strong>追跡されているファイル</strong>——になる。
+    したがって <code>gh auth setup-git</code> と <code>git config --global</code> は
+    <strong>マシン固有の設定を repo に書き込む</strong>。使ってはいけない。
+  </p>
+</div>
+
+<p>新しいマシンで同じ状態にする:</p>
+
+<pre><code>git config --file ~/.config/git/config.local user.email &lt;YOU@EXAMPLE.COM&gt;
+git config --file ~/.config/git/config.local user.signingkey &lt;KEYID&gt;
+git config --file ~/.config/git/config.local commit.gpgsign true
+git config --file ~/.config/git/config.local --add \
+  credential.https://github.com.helper '!/usr/bin/gh auth git-credential'</code></pre>
+
+<p>確認:</p>
+
+<pre><code>git config --show-origin --get user.email   <span class="c"># config.local が出ること</span>
+cd "$(mktemp -d)" &amp;&amp; git init -q &amp;&amp; git commit -q --allow-empty -m t \
+  &amp;&amp; git log --show-signature -1                <span class="c"># Good signature が出ること</span></code></pre>
+
+<h3>yt-dlp/download-playlist.sh</h3>
+
+<pre><code>./download-playlist.sh &lt;playlist-url&gt;
+URL=&lt;playlist-url&gt; ./download-playlist.sh</code></pre>
+
+<p>
+  mp4 に結合し、<code>%(playlist_index)04d_%(title)s</code> で番号付けし、
+  作業ディレクトリの <code>archive.txt</code> に取得済みを記録するので<strong>再実行で再開できる</strong>
+  （<code>archive.txt</code> はファイルと同じ場所に置いたままにする）。
+  メタデータとサムネイルを埋め込み、5〜15 秒の sleep を挟み、10 回までリトライする。
+  <code>yt-dlp</code> は <code>tools.tsv</code>、<code>ffmpeg</code> は <code>apt.tsv</code> の
+  <code>media</code> グループから来る。どちらも欠けていればスクリプトがその場で指示を出す。
+</p>
+
+<!-- ================================================================== -->
+<h2 id="trouble">9. トラブルシューティング</h2>
+
+<p>実際に踏んだ失敗だけを載せている。</p>
+
+<div class="scroller">
+<table>
+  <thead><tr><th>症状</th><th>原因と対処</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>doctor</code> が <code>shim:fd</code> / <code>shim:bat</code> を WARN</td>
+      <td>apt step が未実行。<code>bs.sh --only apt:base</code>（sudo 必要）</td>
+    </tr>
+    <tr>
+      <td><code>doctor</code> が <code>tool:X</code> を「<code>/usr/bin</code> から来ている」と言う</td>
+      <td>apt 版が pin 版を覆っている。<code>bs.sh --only tool:X</code> で <code>~/.local/bin</code> に入れ直す</td>
+    </tr>
+    <tr>
+      <td><code>doctor</code> が <code>node</code> の alias 不一致を WARN</td>
+      <td><code>.zshenv</code> は <code>$NVM_DIR/alias/default</code> を glob するので、
+      <strong>新しいシェルだけが別の node を掴む</strong>。<code>bs.sh --only node</code></td>
+    </tr>
+    <tr>
+      <td><code>doctor</code> が <code>node:tree-sitter</code> を「PATH にあるが動かない」と WARN</td>
+      <td>npm の <code>tree-sitter-cli</code> は JS ラッパーだけで、実体は postinstall が落としてくる。
+      pnpm 10 以降は未承認パッケージの build script を実行しないため、
+      <strong>動かないラッパーだけが PATH に残る</strong>（症状は毎回 Node の <code>ENOENT</code>）。
+      <code>bs.sh --only pnpm</code> が <code>--allow-build</code> 付きで入れ直す</td>
+    </tr>
+    <tr>
+      <td><code>doctor</code> が <code>nvim:parsers</code> を WARN</td>
+      <td><code>tree-sitter</code> CLI が動かないとパーサーは 1 つもビルドされない。上の行を直してから
+      <code>bs.sh --only nvim:plugins</code></td>
+    </tr>
+    <tr>
+      <td>エディタでシンタックスハイライトが無い</td>
+      <td>同上。プラグインツリーは<strong>完全に見える</strong>ので、<code>nvim:parsers</code> 行だけが証拠になる</td>
+    </tr>
+    <tr>
+      <td><code>doctor</code> / <code>update</code> が「Go が必要」と言う</td>
+      <td>この 2 つは Go 製。<code>bs.sh --only go</code> を先に実行する</td>
+    </tr>
+    <tr>
+      <td><code>locale</code> が FAIL</td>
+      <td>すべてのサブプロセスが <code>LC_CTYPE</code> の警告を出す状態。<code>bs.sh --only locale</code>（sudo 必要）。
+      root が無い場合は <code>$XDG_DATA_HOME/locale</code> に自前生成し、<code>.zshenv</code> が <code>LOCPATH</code> 経由で拾う</td>
+    </tr>
+    <tr>
+      <td><code>zdotdir</code> が FAIL</td>
+      <td>zsh がこの repo を読んでいない。<code>bs.sh --only zdotdir</code>（sudo 必要）</td>
+    </tr>
+    <tr>
+      <td>プロンプトが崩れた / 補完が壊れた</td>
+      <td>zsh プラグインの revision がずれている可能性。<code>doctor</code> の <code>zsh:plugins</code> を見て
+      <code>bs.sh --only zsh:plugins</code></td>
+    </tr>
+    <tr>
+      <td>コミットの署名が <code>Inappropriate ioctl for device</code> で失敗</td>
+      <td><code>GPG_TTY</code> が無い。<code>.zshrc</code> が設定するので、対話シェルから実行しているか確認する</td>
+    </tr>
+    <tr>
+      <td>neovim のプラグインが変わってしまった</td>
+      <td><code>bs.sh --only nvim:plugins</code> が lockfile の revision へ<strong>戻す</strong>（<code>Lazy! restore</code>）</td>
+    </tr>
+    <tr>
+      <td>ロケール全体が壊れた（<code>C</code> 以外が使えない）</td>
+      <td><code>LOCPATH</code> が存在しないディレクトリを指している可能性。<a href="#pitfalls">落とし穴 ④</a></td>
+    </tr>
+    <tr>
+      <td>シェルの起動が遅くなった</td>
+      <td>WSL PATH の剪定が効いていない可能性。<code>doctor</code> の <code>wsl</code> 行の本数を見る</td>
+    </tr>
+    <tr>
+      <td><code>bs.sh</code> の実行が途中で失敗した</td>
+      <td>1 step の失敗で全体は止まらない。最後のサマリに失敗した step 名と再実行コマンドが出る</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="pitfalls">10. 落とし穴カタログ</h2>
+
+<p>いずれも<strong>無言で壊れる</strong>類のもので、実際にこの repo で踏んだもの。</p>
+
+<h3>① PATH にある ≠ 動く</h3>
+
+<p>
+  <code>has</code>（shell）と <code>Which</code>（Go）が答えるのは「ファイルがあるか」だけ。
+  ネイティブバイナリを後から落としてくるラッパースクリプトは、その実体が
+  <strong>永久に来なくても</strong>この条件を完全に満たす。
+  これが原因で、コンテナ実走が「プラグイン 34 個・パーサー 0 個」のエディタを作り、
+  install step と <code>doctor</code> の<strong>両方が OK と報告した</strong>。
+</p>
+
+<p>対策として <code>runs</code>（<code>bootstrap/lib.sh</code>）と <code>Runs</code>
+（<code>bootstrap/tool/env.go</code>）がツール自身に <code>--version</code> で名乗らせる。
+ダウンロードしたバイナリのラッパーには必ずこちらを使う。
+さらに、失敗をログに出しつつ exit 0 するコマンドについては、
+<strong>step の生成物を数える</strong>（ビルドされた <code>.so</code> の個数）方が終了コードより信頼できる。</p>
+
+<h3>② <code>gh auth setup-git</code> が追跡ファイルに書く</h3>
+
+<p>
+  <code>~/.gitconfig</code> が無い環境では、git のグローバル設定は
+  <code>~/.config/git/config</code>——この repo が追跡しているファイル——になる。
+  <code>gh auth setup-git</code> や <code>git config --global</code> は
+  そこへマシン固有の設定を書き込んでしまう。<code>git config --file ~/.config/git/config.local</code> を使う。
+</p>
+
+<h3>③ nvm の alias がずれると新しいシェルだけ別の node を掴む</h3>
+
+<p>
+  <code>.zshenv</code> は速度のために <code>nvm.sh</code> を source せず、
+  <code>$NVM_DIR/alias/default</code> を読んで glob する。
+  <code>nvm install</code> だけして <code>nvm alias default</code> を更新しないと、
+  <strong>今のシェルは正しい node、新しいシェルは別の node</strong> という状態になる。
+  <code>bs.sh</code> の <code>node</code> step は両方を必ず揃え、<code>doctor</code> がずれを検出する。
+</p>
+
+<h3>④ <code>LOCPATH</code> が存在しないディレクトリを指すと全ロケールが壊れる</h3>
+
+<p>
+  glibc は <code>LOCPATH</code> が設定されていると<strong>そこだけ</strong>を探し、
+  <code>/usr/lib/locale</code> を見なくなる。したがって存在しないパスを指すと
+  <code>C</code> と <code>C.UTF-8</code>（glibc 組み込み）以外の全ロケールが死ぬ。
+  <code>.zshenv</code> が <code>[[ -d … ]] &amp;&amp;</code> で守っているのはこのため。
+</p>
+
+<h3>⑤ pnpm 10 以降は build script を実行しない</h3>
+
+<p>
+  未承認パッケージの postinstall はブロックされる。
+  ネイティブバイナリを postinstall で取得する npm パッケージ
+  （<code>tree-sitter-cli</code> がまさにこれ）は、<strong>インストールが成功したように見えて</strong>
+  壊れたラッパーだけを残す。<code>--allow-build=&lt;pkg&gt;</code> で例外を明示する
+  （build script をグローバルに有効化するのではなく）。
+</p>
+
+<h3>⑥ その他</h3>
+
+<ul class="body">
+  <li><strong><code>sudo bs.sh</code></strong> はすべてを <code>/root/.local</code> に入れる。スクリプトが拒否する。</li>
+  <li><strong><code>npm -g</code> で入れたツール</strong>は単一の node バージョンのディレクトリに入るので、
+  node を bump すると消える。<code>$PNPM_HOME/bin</code> はバージョン非依存。
+  <code>doctor</code> の <code>node:*</code> 行がこれも見張っている。</li>
+  <li><strong><code>.gitignore</code> の否定は 2 行必要</strong>（<a href="#repo-map">§4</a>）。</li>
+  <li><strong>lazy.nvim 自身の版</strong>が lockfile とずれると、起動時に lockfile が書き換わる
+  （<a href="#editor">§7</a>）。</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="testing">11. テストと検証</h2>
+
+<pre><code>bootstrap/test/lint.sh         <span class="c"># bash -n / shellcheck / gofmt / go vet / go test</span>
+bootstrap/test/container.sh    <span class="c"># クリーンな ubuntu:24.04 でフル実走</span>
+bootstrap/test/container.sh --fast   <span class="c"># nvim:plugins を飛ばして高速に</span>
+bootstrap/test/container.sh --shell  <span class="c"># テストせずコンテナ内のシェルに入る</span></code></pre>
+
+<p>
+  <code>lint.sh</code> は shellcheck が未インストールならコンテナ版にフォールバックする
+  （未整備のマシンでこそ使いたいので）。Go ツールが <strong>Ubuntu 24.04 の Go 1.22 でビルドできること</strong>も
+  確認する——新規マシンが持っているのはそれだから。
+</p>
+
+<p><code>container.sh</code> が実際に検証していること:</p>
+
+<ul class="body">
+  <li><code>--dry-run</code> が何も変更しないこと</li>
+  <li>未対応アーキテクチャが SKIP して成功すること（404 で落ちない）</li>
+  <li>Go が無い状態の <code>doctor</code> が<strong>「先に <code>--only go</code> を実行せよ」と言う</strong>こと
+  （ビルドエラーで死なないこと）</li>
+  <li>フルインストールが失敗ゼロで通ること</li>
+  <li><strong>2 回目の実行でダウンロードが 0 件</strong>であること（冪等性）</li>
+  <li><strong>追跡ファイルが 1 つも変更されないこと</strong></li>
+  <li>zsh が無出力で起動すること</li>
+  <li><code>fzf --zsh</code> / starship / zoxide / eza / stylua / nvim が解決すること</li>
+  <li><code>doctor</code> が通ること</li>
+</ul>
+
+<p>
+  コンテナには sudo 可能な非 root ユーザーが居るので、root 必須の step も
+  <strong>本当に実行される</strong>。<code>/mnt/*</code> も WSL も無いので、WSL 処理が
+  自分で skip する経路もそこで検証される。
+</p>
+
+<div class="note">
+  <span class="label">直近の実行結果</span>
+  <p>クリーンコンテナでのフル実走: <strong>doctor 全 38 行 OK / <code>EXIT=0</code></strong>、
+  <code>nvim:parsers</code> は要求どおり <strong>18 パーサー</strong>。
+  2 回目のダウンロード 0 件・追跡ファイル無変更・zsh 無音起動も維持。</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="limits">12. 既知の限界</h2>
+
+<ul class="body">
+  <li>
+    <strong>Mason が入れる LSP サーバーはバージョン固定されていない。</strong>
+    <code>mason.nvim</code> に lockfile が無いため、<code>lua/config/plugins/lsp.lua</code> の
+    <code>ensure_installed</code> はその日のレジストリの版を入れる。固定するなら
+    <code>"lua_ls@3.7.4"</code> 形式か <code>mason-lock.nvim</code> の導入が必要。
+    treesitter パーサーは <code>lazy-lock.json</code> の nvim-treesitter の commit から
+    ビルドされるので、実質的には固定されている。
+  </li>
+  <li>
+    <strong>install と検証が別言語にある。</strong> step のインストールは <code>steps/*.sh</code>、
+    その検証は <code>tool/doctor.go</code>。<code>tools.tsv</code> 由来の行は両方が manifest から
+    生成されるので影響しないが、個別 step については直す場所が 2 ファイルになる。
+  </li>
+  <li>
+    <strong>x86_64 と aarch64 以外では、ビルド済みバイナリを要する step が SKIP される。</strong>
+    404 で落ちるのではなく理由を表示してスキップし、全体は成功扱いになる。
+  </li>
+  <li>
+    <strong>WSL の Windows 側フォント設定は手作業。</strong> Windows のターミナルは Linux 側の
+    フォントを読まない。<code>bs.sh</code> が TTF の場所とコピー先を表示するので、
+    Windows 側でインストールしてターミナルのフォントに指定する。
+    <code>reg.exe</code> 経由のレジストリ操作は自動化していない。
+  </li>
+  <li>
+    <strong>読まれていないファイルの掃除は opt-in。</strong>
+    <code>bootstrap/cleanup.sh</code> は対象を表示するだけで、<code>--yes</code> で実行する。
+    削除ではなく <code>~/.local/share/dotconfig-legacy/&lt;日時&gt;/</code> へ移動するので戻せる。
+    <code>~/dotfiles/</code> と <code>~/bootstrap/</code> は判断が必要なので対象外にしてある。
+  </li>
+</ul>
+
+<footer>
+  <p>
+    このファイルは <code>~/.config/manual/index.html</code>。git で追跡されているので、
+    新規マシンでは clone した直後から読める。
+    設計の記録（なぜこの構成なのか）は <a href="../bootstrap/README.md"><code>bootstrap/README.md</code></a>、
+    端末用の早見表は <a href="../bootstrap/MANUAL.md"><code>bootstrap/MANUAL.md</code></a>。
+  </p>
+</footer>
+</main>
+</div>
+
+<script>
+// 目次のスクロール連動。IntersectionObserver だけで、外部依存なし。
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav a[href^="#"]'));
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) { byId[el.id] = a; targets.push(el); }
+  });
+  if (!targets.length || !('IntersectionObserver' in window)) return;
+
+  var visible = {};
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+    // 見えている中で最も上のものを active にする（複数見えている場合の揺れを防ぐ）
+    var active = null;
+    for (var i = 0; i < targets.length; i++) {
+      if (visible[targets[i].id]) { active = targets[i].id; break; }
+    }
+    links.forEach(function (a) { a.classList.remove('active'); });
+    if (active && byId[active]) byId[active].classList.add('active');
+  }, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+
+  targets.forEach(function (el) { observer.observe(el); });
+})();
+</script>
+</body>
+</html>

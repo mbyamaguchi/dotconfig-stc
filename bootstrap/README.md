@@ -1,6 +1,7 @@
 # bootstrap
 
-**操作手順は [MANUAL.md](MANUAL.md) にあります。** このファイルは設計の記録で、
+**詳細マニュアルは [../manual/index.html](../manual/index.html)、端末用の早見表は
+[MANUAL.md](MANUAL.md) にあります。** このファイルは設計の記録で、
 なぜこうなっているかを説明するもの。
 
 Reproduce this `~/.config` on an Ubuntu machine, and keep its pinned versions
