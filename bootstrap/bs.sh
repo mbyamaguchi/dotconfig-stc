@@ -499,9 +499,17 @@ main() {
       --no-sudo)  NO_SUDO=1; shift ;;
       --check)    UPDATE_CHECK=1; shift ;;
       -h|--help)  usage; exit 0 ;;
-      # A bare word is the old `bs.sh install_eza` calling convention.
       -*)         err "unknown option: $1"; usage; exit 2 ;;
-      *)          err "unexpected argument: $1 (did you mean --only $1 ?)"; exit 2 ;;
+      # `bs.sh update starship` is the natural way to bump one thing, so for
+      # update a bare word is the filter. Elsewhere it is most likely the old
+      # `bs.sh install_eza` calling convention, which --only replaced.
+      *)
+        if [ "$cmd" = update ]; then
+          ONLY="${ONLY:+$ONLY,}$1"; shift
+        else
+          err "unexpected argument: $1 (did you mean --only $1 ?)"; exit 2
+        fi
+        ;;
     esac
   done
 
