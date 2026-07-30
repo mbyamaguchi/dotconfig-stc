@@ -238,7 +238,8 @@ bootstrap/cleanup.sh --yes    # 実行
 | `doctor` が `shim:fd` / `shim:bat` を WARN | apt ステップが未実行。`bs.sh --only apt:base`（sudo 必要） |
 | `doctor` が `tool:X` を「`/usr/bin` から来ている」と言う | apt 版が pin 版を覆っている。`bs.sh --only tool:X` で `~/.local/bin` に入れ直す |
 | `doctor` が `node` の alias 不一致を WARN | `.zshenv` は `$NVM_DIR/alias/default` を glob するので、**新しいシェルが別の node を掴む**。`bs.sh --only node` |
-| `doctor` が `nvim:parsers` を WARN | `tree-sitter` CLI が無いとパーサーは 1 つもビルドされない。`bs.sh --only pnpm` で入る |
+| `doctor` が `nvim:parsers` を WARN | `tree-sitter` CLI が無いとパーサーは 1 つもビルドされない。`bs.sh --only pnpm` で入れた後、`bs.sh --only nvim:plugins` |
+| `doctor` が `node:tree-sitter` を「PATH にあるが動かない」と WARN | npm の `tree-sitter-cli` は JS ラッパーだけで、実体は postinstall が落としてくる。pnpm 10 以降は未承認パッケージの build script を実行しないため、**動かないラッパーだけが PATH に残る**（症状は毎回 Node の `ENOENT`）。`bs.sh --only pnpm` が `--allow-build` 付きで入れ直す |
 | `doctor` / `update` が「Go が必要」と言う | この 2 つは Go 製。`bs.sh --only go` を先に実行する |
 | `locale` が FAIL | すべてのサブプロセスが `LC_CTYPE` の警告を出す状態。`bs.sh --only locale`（sudo 必要）。root が無い場合は `$XDG_DATA_HOME/locale` に自前生成し、`.zshenv` が `LOCPATH` 経由で拾う |
 | `zdotdir` が FAIL | zsh がこの repo を読んでいない。`bs.sh --only zdotdir`（sudo 必要） |
