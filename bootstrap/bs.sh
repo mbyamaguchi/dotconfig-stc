@@ -140,6 +140,12 @@ cmd_install() {
       continue
     fi
 
+    # Before each step, not just once at startup: steps run in subshells, so a
+    # directory created by one (bob's nvim-bin, $PNPM_HOME, ~/.cargo/bin) is
+    # invisible to the next unless the parent re-scans. Without this the plugin
+    # restore silently skipped on a fresh machine, because `nvim` had just been
+    # installed into a directory that was not on PATH when the run began.
+    path_refresh
     head_ "$id  ${_C_DIM}${STEP_DESC[$id]}${_C_OFF}"
     # Subshell so the step body can use `set -e` (a failure inside it stops that
     # step immediately) without ending the whole run.
