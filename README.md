@@ -26,26 +26,31 @@ git checkout main
 git fetch
 ```
 
-Finally, run:
+Finally, run the bootstrap:
 
 ```sh
-exec $SHELL
+~/.config/bootstrap/bs.sh
+exec zsh
 ```
 
-to apply the changes.
+That installs everything these configs need, at the versions pinned in
+`bootstrap/`. It is idempotent, so re-run it any time something looks off.
 
-### Additional Installation
+### Keeping it current
 
-Fully to use the settings, install below all.
+```sh
+bootstrap/bs.sh update    # bump every pinned version
+git diff                  # review what moved
+git commit -am 'Bump pins'
+bootstrap/bs.sh           # install it
+```
 
-- bat
-- eza
-- sheldon
-- neovim>=0.12
-- starship
-- pixi (package manager for python)
-- uv 
-- node/npm
-- pnpm
-- Cica font
+### Checking a machine
+
+```sh
+bootstrap/bs.sh doctor    # where does this machine differ from the manifests?
+```
+
+See [bootstrap/README.md](bootstrap/README.md) for the tool list, how to add a
+tool, what is pinned and what deliberately is not.
 

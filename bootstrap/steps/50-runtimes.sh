@@ -162,8 +162,11 @@ check_node() {
 # pnpm, and the editor's node tools
 # ----------------------------------------------------------------------------
 _pnpm_install() {
+  # PNPM_VERSION is what keeps the installer from ignoring the pin and taking
+  # whatever is newest -- which it did, landing 11.18.0 against a pinned 11.15.0.
   curl "${CURL_OPTS[@]}" https://get.pnpm.io/install.sh \
-    | env SHELL="$(command -v bash)" PNPM_HOME="$PNPM_HOME" sh -
+    | env SHELL="$(command -v bash)" PNPM_HOME="$PNPM_HOME" \
+          PNPM_VERSION="$(rt_ref pnpm)" sh -
 }
 
 step_pnpm() {
@@ -178,6 +181,9 @@ step_pnpm() {
   else
     info "installing pnpm"
     run _pnpm_install
+    # The installer creates $PNPM_HOME, which therefore was not on PATH when the
+    # run started -- without this, the node-tools step below cannot see pnpm.
+    path_refresh
   fi
 
   # prettier, stylua and eslint_d are what conform.nvim and nvim-lint shell out

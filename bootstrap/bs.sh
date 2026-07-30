@@ -105,6 +105,7 @@ sudo_init() {
     return 0
   fi
 
+  # shellcheck disable=SC2034  # SUDO_CMD is read by run_sudo in lib.sh
   # One prompt for the whole run, then keep the timestamp warm so a long apt
   # step cannot be interrupted by a second password prompt.
   if sudo -n true 2>/dev/null || { [ -t 0 ] && sudo -v; }; then
@@ -277,6 +278,7 @@ doctor_extra() {
   # ~/.gitconfig is read after ~/.config/git/config and wins, so anything in it
   # is invisible to this repo and absent on a fresh machine.
   if [ -f "$HOME/.gitconfig" ]; then
+    # shellcheck disable=SC2088  # a message, not a path to expand
     say git:home WARN "~/.gitconfig shadows git/config -- fold it into git/config.local"
   else
     say git:home OK "no ~/.gitconfig shadowing the XDG config"
@@ -323,6 +325,8 @@ bump() {
 
 update_tools() {
   local name ref min repo asset install new
+  # min/asset/install are read to consume the columns; only ref and repo matter.
+  # shellcheck disable=SC2034
   while IFS=$'\t' read -r name ref min repo asset install; do
     case "$name" in ''|'#'*) continue ;; esac
     [ -n "$ONLY" ] && ! _matches "$name" "$ONLY" && continue
@@ -398,9 +402,12 @@ update_nvim_plugins() {
   fi
   info "updating nvim plugins (lazy-lock.json)"
   nvim --headless '+Lazy! update' +qa 2>/dev/null || warn "nvim plugin update failed"
-  git -C "$CONFIG_DIR" diff --quiet -- nvim/lazy-lock.json 2>/dev/null \
-    && skip "lazy-lock.json unchanged" \
-    || { UPDATE_CHANGES=1; info "lazy-lock.json updated"; }
+  if git -C "$CONFIG_DIR" diff --quiet -- nvim/lazy-lock.json 2>/dev/null; then
+    skip "lazy-lock.json unchanged"
+  else
+    UPDATE_CHANGES=1
+    info "lazy-lock.json updated"
+  fi
 }
 
 cmd_update() {

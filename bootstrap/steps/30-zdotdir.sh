@@ -22,7 +22,13 @@ step_zdotdir() {
     dry "echo 'export ZDOTDIR=\"\$HOME/.config/zsh\"' >> $ZSHENV_SYSTEM"
     return 0
   fi
-  printf 'export ZDOTDIR="$HOME/.config/zsh"\n' | "${SUDO_CMD:-}" tee -a "$ZSHENV_SYSTEM" >/dev/null
+  # Single quotes on purpose: $HOME must reach the file unexpanded so the line
+  # works for whichever user's zsh reads it.
+  # shellcheck disable=SC2016
+  # ${VAR:+$VAR} rather than "${VAR:-}": when we are already root SUDO_CMD is
+  # empty, and a quoted empty word would be an attempt to run the command "".
+  printf 'export ZDOTDIR="$HOME/.config/zsh"\n' \
+    | ${SUDO_CMD:+$SUDO_CMD} tee -a "$ZSHENV_SYSTEM" >/dev/null
 }
 
 # Reading /etc/zsh/zshenv needs no privilege in practice, but do not assume it.

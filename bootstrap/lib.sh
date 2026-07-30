@@ -11,7 +11,7 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   _C_HEAD=$'\033[1;36m'; _C_INFO=$'\033[1;34m'; _C_OK=$'\033[1;32m'
   _C_WARN=$'\033[1;33m'; _C_ERR=$'\033[1;31m';  _C_DIM=$'\033[2m'; _C_OFF=$'\033[0m'
 else
-  _C_HEAD= _C_INFO= _C_OK= _C_WARN= _C_ERR= _C_DIM= _C_OFF=
+  _C_HEAD='' _C_INFO='' _C_OK='' _C_WARN='' _C_ERR='' _C_DIM='' _C_OFF=''
 fi
 
 head_()  { printf '\n%s==>%s %s\n' "$_C_HEAD" "$_C_OFF" "$*"; }
@@ -30,9 +30,13 @@ die()    { err "$*"; exit 1; }
 : "${XDG_CACHE_HOME:=$HOME/.cache}"
 : "${XDG_DATA_HOME:=$HOME/.local/share}"
 
+# The layout constants every step reads. shellcheck only sees this file, not the
+# steps/*.sh that consume them, so the "unused" warnings here are wrong.
 BOOTSTRAP_DIR="${BOOTSTRAP_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}"
+# shellcheck disable=SC2034
 CONFIG_DIR="$(dirname -- "$BOOTSTRAP_DIR")"
 LOCAL_BIN="$HOME/.local/bin"
+# shellcheck disable=SC2034
 FONT_DIR="$XDG_DATA_HOME/fonts"
 GO_ROOT="$HOME/.local/go"
 NVM_DIR="${NVM_DIR:-$XDG_CONFIG_HOME/nvm}"
@@ -72,6 +76,8 @@ path_init() {
   [ -d "${nodebin[0]:-}" ] || nodebin=("$NVM_DIR"/versions/node/*/bin)
   [ -d "${nodebin[-1]:-}" ] && want=("${nodebin[-1]}" "${want[@]}")
 
+  # Read by bs.sh's doctor to check this list against zsh's own $path.
+  # shellcheck disable=SC2034
   PATH_WANT=("${want[@]}")
   for d in "${want[@]}"; do
     case ":$PATH:" in
@@ -80,6 +86,15 @@ path_init() {
     esac
   done
   export PATH
+}
+
+# Re-run the PATH scan after a step creates a directory that did not exist when
+# the run started -- bob's nvim-bin and $PNPM_HOME are both created by the very
+# step that then needs to invoke what it just installed. Only ever adds, so
+# calling it repeatedly is free.
+path_refresh() {
+  path_init
+  hash -r 2>/dev/null || true
 }
 
 # ----------------------------------------------------------------------------
@@ -129,6 +144,7 @@ arch_init() {
   ARCH_RAW="${ARCH_OVERRIDE:-$(uname -m)}"
   case "$ARCH_RAW" in
     x86_64|amd64)
+      ARCH=x86_64
       RUST_GNU=x86_64-unknown-linux-gnu
       RUST_MUSL=x86_64-unknown-linux-musl
       GOARCH=amd64
@@ -136,6 +152,7 @@ arch_init() {
       BOB_ARCH=x86_64
       ;;
     aarch64|arm64)
+      ARCH=aarch64
       RUST_GNU=aarch64-unknown-linux-gnu
       RUST_MUSL=aarch64-unknown-linux-musl
       GOARCH=arm64
@@ -145,7 +162,7 @@ arch_init() {
       BOB_ARCH=arm
       ;;
     *)
-      RUST_GNU= RUST_MUSL= GOARCH= DEB_ARCH= BOB_ARCH=
+      ARCH='' RUST_GNU='' RUST_MUSL='' GOARCH='' DEB_ARCH='' BOB_ARCH=''
       ;;
   esac
 }
@@ -235,6 +252,7 @@ expand_asset() {
   local s="$1" tag="$2"
   s=${s//\{TAG\}/$tag}
   s=${s//\{VERSION\}/$(ref_version "$tag")}
+  s=${s//\{ARCH\}/${ARCH:-}}
   s=${s//\{RUST_GNU\}/${RUST_GNU:-}}
   s=${s//\{RUST_MUSL\}/${RUST_MUSL:-}}
   s=${s//\{GOARCH\}/${GOARCH:-}}
@@ -287,15 +305,15 @@ download() {
 # have none, and demanding one would mean pinning hashes in the manifest and
 # re-downloading on every bump.
 verify_sha256() {
-  local file="$1" url="$2" want=""
+  local file="$1" url="$2" expected=""
   [ "${DRY_RUN:-0}" = 1 ] && return 0
-  want=$(curl "${CURL_OPTS[@]}" "$url.sha256" 2>/dev/null | tr -d '\n' | awk '{print $1}') || want=""
-  [ -n "$want" ] || return 0
+  expected=$(curl "${CURL_OPTS[@]}" "$url.sha256" 2>/dev/null | tr -d '\n' | awk '{print $1}') || expected=""
+  [ -n "$expected" ] || return 0
   local got
   got=$(sha256sum "$file" | awk '{print $1}')
-  if [ "$got" != "$want" ]; then
+  if [ "$got" != "$expected" ]; then
     err "checksum mismatch for $(basename "$file")"
-    err "  expected $want"
+    err "  expected $expected"
     err "  got      $got"
     return 1
   fi

@@ -8,18 +8,24 @@ step_default_shell() {
   # Compare resolved paths: /bin is a symlink to /usr/bin on Ubuntu, so
   # /bin/zsh and /usr/bin/zsh are the same shell and neither needs changing.
   local current
-  current=$(getent passwd "$USER" | cut -d: -f7)
+  current=$(getent passwd "$(id -un)" | cut -d: -f7)
   if [ "$(readlink -f "$current" 2>/dev/null)" = "$(readlink -f "$zsh_path")" ]; then
     ok "login shell is already zsh ($current)"
     return 0
   fi
   info "changing the login shell from $current to $zsh_path"
-  run chsh -s "$zsh_path" || run_sudo chsh -s "$zsh_path" "$USER"
+  # sudo first when we have it: plain `chsh` asks for a password through PAM,
+  # which fails noisily in any non-interactive run.
+  if [ "${SUDO_OK:-0}" = 1 ]; then
+    run_sudo chsh -s "$zsh_path" "$(id -un)"
+  else
+    run chsh -s "$zsh_path"
+  fi
 }
 
 check_default_shell() {
   local id="$1" current zsh_path
-  current=$(getent passwd "$USER" | cut -d: -f7)
+  current=$(getent passwd "$(id -un)" | cut -d: -f7)
   zsh_path=$(command -v zsh 2>/dev/null || echo /bin/zsh)
   if [ "$(readlink -f "$current" 2>/dev/null)" = "$(readlink -f "$zsh_path")" ]; then
     say "$id" OK "$current"

@@ -19,7 +19,9 @@ step_neovim() {
   info "bob use $ref"
   run bob use "$ref"
   if [ "${DRY_RUN:-0}" != 1 ]; then
-    hash -r 2>/dev/null || true
+    # bob creates $XDG_DATA_HOME/bob/nvim-bin on first use, so it was not on PATH
+    # when the run started and `nvim` is not yet findable without this.
+    path_refresh
     info "neovim is now $(version_of nvim) at $(command -v nvim)"
   fi
 }

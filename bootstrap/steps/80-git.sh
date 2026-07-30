@@ -26,6 +26,7 @@ step_git_local() {
   # and none of which a fresh machine gets -- so the two machines behave
   # differently in a way nothing in git status would show.
   if [ -f "$HOME/.gitconfig" ]; then
+    # shellcheck disable=SC2088  # messages, not paths to expand
     warn "~/.gitconfig exists and overrides ~/.config/git/config"
     warn "  it has: $(git config --file "$HOME/.gitconfig" --list | cut -d= -f1 | paste -sd' ' -)"
     warn "  move the machine-local parts into git/config.local and delete it,"
