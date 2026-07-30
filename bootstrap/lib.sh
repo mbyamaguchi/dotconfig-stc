@@ -56,6 +56,7 @@ path_init() {
     "$HOME/.cargo/bin"
     "$XDG_DATA_HOME/bob/nvim-bin"
     "$HOME/.pixi/bin"
+    "$PNPM_HOME/bin"
     "$PNPM_HOME"
     "${GOPATH:-$HOME/go}/bin"
     "$GO_ROOT/bin"

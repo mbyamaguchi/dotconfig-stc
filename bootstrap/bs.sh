@@ -384,7 +384,7 @@ update_sheldon() {
     [ "$UPDATE_CHECK" = 1 ] && continue
     tmp="$(mktemp)"
     awk -v old="$cur" -v new="$new" '{ gsub(old, new); print }' "$toml" >"$tmp" && mv "$tmp" "$toml"
-  done < <(grep -oE "github = ['\"][^'\"]+" "$toml" | sed "s/.*['\"]//")
+  done < <(grep -oE "^github = ['\"][^'\"]+" "$toml" | sed "s/.*['\"]//")
 }
 
 # lazy.nvim owns its own lockfile; ask it to update and let the diff show up in
