@@ -1,10 +1,10 @@
 [user]
   name = mbyamaguchi
-  email = 161670081+mbyamaguchi@users.noreply.github.com
+  email = github@mbmsky.dev
   useConfigOnly = true
 
 [init]
 	defaultBranch = main
 
 [include]
-  path = ~/.config/git/config.local
+  path = $HOME/.config/git/config.local
