@@ -35,7 +35,7 @@ defer = "{% for file in files %}zsh-defer source \"{{ file }}\"\n{% endfor %}"
 # compinit runs in .zshrc or the completions never register.
 [plugins.zsh-completions]
 github = 'zsh-users/zsh-completions'
-rev = "d3578edb5f2728c2b3c8d82501ca81d3e0ab575e"
+rev = "6ea4709fbc64f813ffa013fdd062fa0f0d9a0dab"
 
 [plugins.zsh-autosuggestions]
 github = 'zsh-users/zsh-autosuggestions'
