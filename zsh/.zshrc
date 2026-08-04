@@ -89,7 +89,3 @@ if has yazi; then
         rm -f -- "$tmp"
     }
 fi
-
-export MAMBA_ROOT_PREFIX="$HOME/miniforge3"
-source "$HOME/miniforge3/etc/profile.d/conda.sh"
-source "$HOME/miniforge3/etc/profile.d/mamba.sh"
